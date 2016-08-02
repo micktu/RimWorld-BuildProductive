@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+    <CommunityCoreLibrary.ModHelperDef>
+
+        <defName>BuildProductive</defName>
+        <ModName>BuildProductive</ModName>
+        <minCCLVersion>0.14.1</minCCLVersion>
+
+        <PostLoadInjectors> 
+            <li>BuildProductive.Bootstrapper</li>
+        </PostLoadInjectors>
+
+    </CommunityCoreLibrary.ModHelperDef>
+</Defs>

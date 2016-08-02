@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+	<BuildProductive.DesignatorBuildCopy>Скопировать: {0}</BuildProductive.DesignatorBuildCopy>
+	<BuildProductive.DesignatorBuildCopyDesc>Построить копию этого здания.</BuildProductive.DesignatorBuildCopyDesc>
+</LanguageData>
+

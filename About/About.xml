@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>
+  <name>Build Productive!</name>
+  <author>Micktu</author>
+  <url>http://micktu.net</url>
+  <targetVersion>0.14.1249</targetVersion>
+  <description>&lt;b&gt;Requires &lt;color=&quot;orange&quot;&gt;Community Core Library&lt;/color&gt;.&lt;/b&gt;
+
+This convenient mod allows you to designate buildings by copying ones you have already built, saving you a trip to the Architect tab. Simply select a building, click a button, and place.
+
+It also copies settings for buildings that have some. Currently it remembers electrical &lt;b&gt;power switches&lt;/b&gt;, heater and cooler &lt;b&gt;target temperature&lt;/b&gt;, turret &lt;b&gt;hold-fire&lt;/b&gt;, and trap &lt;b&gt;auto-rearm&lt;/b&gt;. Ask me for more if you need it!
+
+Some features planned, maybe. Some issues known, for sure.
+
+Happy building!
+
+P.S. Report bugs or get source code at &lt;b&gt;github.com/micktu/RimWorld-BuildProductive&lt;/b&gt;</description>
+</ModMetaData>

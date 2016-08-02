@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<LanguageData>
+	<BuildProductive.DesignatorBuildCopy>Copy {0}</BuildProductive.DesignatorBuildCopy>
+	<BuildProductive.DesignatorBuildCopyDesc>Build a copy of this structure.</BuildProductive.DesignatorBuildCopyDesc>
+</LanguageData>
+
