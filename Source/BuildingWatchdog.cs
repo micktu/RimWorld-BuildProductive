@@ -24,25 +24,23 @@ namespace BuildProductive
             for (int i = 0; i < _watchList.Count; i++)
             {
                 var p = _watchList[i];
-
-                Blueprint_Build blueprint = null;
-                Frame frame = null;
-                Building building = null;
+                var isCompletedOrCanceled = false;
                 
                 foreach (var thing in Find.ThingGrid.ThingsAt(p.Location))
                 {
-                    if (thing.def == p.Def.blueprintDef) blueprint = thing as Blueprint_Build;
-                    else if (thing.def == p.Def.frameDef) frame = thing as Frame;
-                    else if (thing.def == p.Def) building = thing as Building;
+                    if (thing.def == p.Def.blueprintDef || thing.def == p.Def.frameDef)
+                    {
+                        break;
+                    }
+                    else if (thing.def == p.Def)
+                    {
+                        UnwrapProperties(thing as Building, p);
+                        isCompletedOrCanceled = true;
+                        break;
+                    }
                 }
 
-                if (building != null)
-                {
-                    UnwrapProperties(building, p);
-                    building = null;
-                }
-
-                if (blueprint == null && frame == null && building == null)
+                if (isCompletedOrCanceled)
                 {
                     _watchList.Remove(p);
                     i--;
