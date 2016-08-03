@@ -4,7 +4,7 @@ using RimWorld;
 
 namespace BuildProductive
 {
-    public struct BuildingProperties
+    public struct BuildingChecklist
     {
         public IntVec3 Location;
         public BuildableDef Def;
@@ -17,7 +17,7 @@ namespace BuildProductive
 
     class BuildingWatchdog : Thing
     {
-        private List<BuildingProperties> _watchList = new List<BuildingProperties>();
+        private List<BuildingChecklist> _watchList = new List<BuildingChecklist>();
 
         public override void Tick()
         {
@@ -25,17 +25,19 @@ namespace BuildProductive
             {
                 var p = _watchList[i];
                 var isBeingBuilt = false;
-                
+
                 foreach (var thing in Find.ThingGrid.ThingsAt(p.Location))
                 {
+                    // If there's an unfinished building in the cell, keep waiting
                     if (thing.def == p.Def.blueprintDef || thing.def == p.Def.frameDef)
                     {
                         isBeingBuilt = true;
                         break;
                     }
+                    // Otherwise, set settings and stop watching
                     else if (thing.def == p.Def)
                     {
-                        UnwrapProperties(thing as Building, p);
+                        UnwrapChecklist(thing as Building, p);
                         break;
                     }
                 }
@@ -50,51 +52,56 @@ namespace BuildProductive
 
         public void TryAddBuilding(IntVec3 loc, Building building)
         {
-            var p = new BuildingProperties { Location = loc, Def = building.def };
+            var p = new BuildingChecklist { Location = loc, Def = building.def };
 
-            if (WrapProperties(building, ref p))
+            if (WrapChecklist(building, ref p))
             {
                 _watchList.Add(p);
             }
         }
 
-        public bool WrapProperties(Building building, ref BuildingProperties p)
+        public bool WrapChecklist(Building building, ref BuildingChecklist p)
         {
-            bool hasProperties = false;
+            bool hasSettings = false;
 
+            // Designate power switch
             var flickable = building.GetComp<CompFlickable>();
             if (flickable != null)
             {
                 p.WantSwitchOn = (bool)Bootstrapper.WantSwitchOn.GetValue(flickable);
-                hasProperties = true;
+                hasSettings = true;
             }
 
+            // Target temperature
             var tempControl = building.GetComp<CompTempControl>();
             if (tempControl != null)
             {
                 p.TargetTemperature = tempControl.targetTemperature;
-                hasProperties = true;
+                hasSettings = true;
             }
 
+            // Auto rearm
             var rearmable = building as Building_TrapRearmable;
             if (rearmable != null)
             {
                 p.AutoRearm = (bool)Bootstrapper.AutoRearmField.GetValue(rearmable);
-                hasProperties = true;
+                hasSettings = true;
             }
 
+            // Hold fire
             var turret = building as Building_TurretGun;
             if (turret != null)
             {
                 p.HoldFire = (bool)Bootstrapper.HoldFireField.GetValue(turret);
-                hasProperties = true;
+                hasSettings = true;
             }
 
-            return hasProperties;
+            return hasSettings;
         }
 
-        public void UnwrapProperties(Building building, BuildingProperties p)
+        public void UnwrapChecklist(Building building, BuildingChecklist p)
         {
+            // Designate power switch
             var flickable = building.GetComp<CompFlickable>();
             if (flickable != null)
             {
@@ -102,18 +109,21 @@ namespace BuildProductive
                 FlickUtility.UpdateFlickDesignation(building);
             }
 
+            // Target temperature
             var tempControl = building.GetComp<CompTempControl>();
             if (tempControl != null)
             {
                tempControl.targetTemperature = p.TargetTemperature;
             }
 
+            // Auto rearm
             var rearmable = building as Building_TrapRearmable;
             if (rearmable != null)
             {
                 Bootstrapper.AutoRearmField.SetValue(rearmable, p.AutoRearm);
             }
 
+            // Hold fire
             var turret = building as Building_TurretGun;
             if (turret != null)
             {

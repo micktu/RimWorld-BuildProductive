@@ -20,6 +20,12 @@ namespace BuildProductive
             WriteStuff = true;
         }
 
+        // FIXME If IconDrawColor ever becomes public
+        public Color PublicIconDrawColor
+        {
+            get { return IconDrawColor; }
+        }
+
         public override string Label
         {
             get
@@ -51,6 +57,7 @@ namespace BuildProductive
 
         public override void DesignateSingleCell(IntVec3 c)
         {
+            soundSucceeded = SoundDefOf.DesignatePlaceBuilding;
             base.DesignateSingleCell(c);
             Bootstrapper.Watchdog.TryAddBuilding(c, _building);
         }
@@ -58,6 +65,8 @@ namespace BuildProductive
         public override AcceptanceReport CanDesignateThing(Thing t)
         {
             var thing = Find.Selector.SingleSelectedThing;
+
+            // TODO Copy blueprints and frames
 
             var building = thing as Building;
 
@@ -87,6 +96,8 @@ namespace BuildProductive
                 iconProportions = new Vector2(1f, 1f);
                 iconDrawScale = 1f;
             }
+
+            soundSucceeded = activateSound;
 
             return true;
         }
