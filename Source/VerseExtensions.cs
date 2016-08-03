@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
 using Verse;
 
 namespace BuildProductive
@@ -16,6 +17,11 @@ namespace BuildProductive
 
             // FIXME If Command.IconDrawColor becomes public, return command.IconDrawColor
             return Color.white;
+        }
+
+        internal static void GizmoGridDrawer_DrawGizmoGrid(IEnumerable<Gizmo> gizmos, float startX, out Gizmo mouseoverGizmo)
+        {
+            GizmoGridDrawer.DrawGizmoGrid(gizmos, startX, out mouseoverGizmo);
         }
     }
 }

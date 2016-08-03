@@ -34,7 +34,7 @@ namespace BuildProductive
                         isBeingBuilt = true;
                         break;
                     }
-                    // Otherwise, set settings and stop watching
+                    // Otherwise apply settings and stop watching
                     else if (thing.def == p.Def)
                     {
                         UnwrapChecklist(thing as Building, p);
@@ -44,7 +44,7 @@ namespace BuildProductive
 
                 if (!isBeingBuilt)
                 {
-                    _watchList.Remove(p);
+                    _watchList.RemoveAt(i);
                     i--;
                 }
             }
