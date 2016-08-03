@@ -62,8 +62,8 @@ namespace BuildProductive
             var building = thing as Building;
 
             if (building == null) return false;
-            if (building is Frame) return false;
             if (building.def.category != ThingCategory.Building) return false;
+            if (building.def.frameDef == null) return false;
             if (building.Faction != Faction.OfPlayer)
             {
                 if (building.Faction != null) return false;
