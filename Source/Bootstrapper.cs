@@ -8,6 +8,7 @@ namespace BuildProductive
 {
     class Bootstrapper : SpecialInjector
     {
+        public static Type InspectGizmoGrid;
         public static FieldInfo StuffDefField, WriteStuffField, GizmoListField, ObjListField, WantSwitchOn, AutoRearmField, HoldFireField;
 
         public static Designator_BuildCopy CopyDesignator;
@@ -21,7 +22,8 @@ namespace BuildProductive
             StuffDefField = GetInstancePrivateField(typeof(Designator_Build), "stuffDef");
             WriteStuffField = GetInstancePrivateField(typeof(Designator_Build), "writeStuff");
 
-            //var inspectGizmoGrid = typeof(GizmoGridDrawer).Assembly.GetType("RimWorld.InspectGizmoGrid");
+            InspectGizmoGrid = typeof(GizmoGridDrawer).Assembly.GetType("RimWorld.InspectGizmoGrid");
+            
             //GizmoListField = GetStaticPrivateField(inspectGizmoGrid, "gizmoList");
             //ObjListField = GetStaticPrivateField(inspectGizmoGrid, "objList");
 
@@ -46,7 +48,7 @@ namespace BuildProductive
             }
             Find.TickManager.RegisterAllTickabilityFor(Patcher);
             */
-            
+
             // Initialize Designator
             if (CopyDesignator == null)
             {

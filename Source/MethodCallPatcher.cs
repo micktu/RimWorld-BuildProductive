@@ -39,12 +39,14 @@ namespace BuildProductive
             pi.SourceMethod = sourceType.GetMethod(sourceName);
             pi.TargetMethod = targetType.GetMethod(targetName);
             pi.ReplacementMethod = replacementType.GetMethod(replacementName, BindingFlags.Static | BindingFlags.NonPublic);
+            //pi.ReplacementMethod = replacementType.GetMethod(replacementName);
 
             pi.SourceAddress = pi.SourceMethod.MethodHandle.GetFunctionPointer().ToInt32();
             pi.TargetAddress = pi.TargetMethod.MethodHandle.GetFunctionPointer().ToInt32();
             pi.ReplacementAddress = pi.ReplacementMethod.MethodHandle.GetFunctionPointer().ToInt32();
 
             _patches.Add(pi);
+            Log.Message("MethodCallPatcher: Want to patch " + pi.TargetMethod.Name + " in " + pi.SourceMethod.Name + ".");
         }
 
         unsafe private bool TryPatch(PatchInfo pi)
