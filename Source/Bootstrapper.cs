@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reflection;
+using UnityEngine;
 using Verse;
 using RimWorld;
 using CommunityCoreLibrary;
@@ -12,9 +13,10 @@ namespace BuildProductive
         public static FieldInfo StuffDefField, WriteStuffField, GizmoListField, ObjListField, WantSwitchOn, AutoRearmField, HoldFireField;
 
         public static Designator_BuildCopy CopyDesignator;
-
         public static BuildingWatchdog Watchdog;
-        public static MethodCallPatcher Patcher;
+
+		public static MethodCallPatcher Patcher;
+		public static GameObject PatcherContainer;
 
         public override bool Inject()
         {
@@ -35,20 +37,20 @@ namespace BuildProductive
             // Hook into Command.IconDrawColor
             Detour(typeof(Command), "get_IconDrawColor", BindingFlags.Instance | BindingFlags.NonPublic,
                    typeof(VerseExtensions), "Command_get_IconDrawColor", BindingFlags.Static | BindingFlags.NonPublic);
-            /*
-            if (Patcher == null)
-            {
-                Patcher = new MethodCallPatcher();
-                Patcher.def = new ThingDef { tickerType = TickerType.Normal };
 
-                Patcher.AddPatch(InspectGizmoGrid, "DrawInspectGizmoGridFor",
-                                 typeof(GizmoGridDrawer), "DrawGizmoGrid",
-                                 typeof(VerseExtensions), "GizmoGridDrawer_DrawGizmoGrid");
-            }
-            Find.TickManager.RegisterAllTickabilityFor(Patcher);
-            */
-            // Initialize Designator
-            if (CopyDesignator == null)
+			if (PatcherContainer == null)
+			{
+				PatcherContainer = new GameObject();
+				GameObject.DontDestroyOnLoad(PatcherContainer);
+				Patcher = PatcherContainer.AddComponent<MethodCallPatcher>();
+
+				Patcher.AddPatch(InspectGizmoGrid, "DrawInspectGizmoGridFor",
+								 typeof(GizmoGridDrawer), "DrawGizmoGrid",
+								 typeof(VerseExtensions), "GizmoGridDrawer_DrawGizmoGrid");
+			}
+
+			// Initialize Designator
+			if (CopyDesignator == null)
             {
                 CopyDesignator = new Designator_BuildCopy();
             }
