@@ -86,7 +86,7 @@ namespace BuildProductive
 
 			_patches.Add(pi);
             Log.Message("MethodCallPatcher: Want to patch " + pi.TargetMethod.Name + " in " + pi.SourceMethod.Name + ".");
-
+			/*
 			if (pi.Is64)
 			{
 				Log.Message(string.Format("Platform is x64. Source address: {0:X16}, target address: {1:X16}, replacement address:D {2:X16}",
@@ -97,6 +97,7 @@ namespace BuildProductive
 				Log.Message(string.Format("Platform is x86. Source address: {0:X8}, target address: {1:X8}, replacement address:D {2:X8}",
 							  pi.SourceAddress32, pi.TargetAddress32, pi.ReplacementAddress32));
 			}
+			*/
 
 		}
 
