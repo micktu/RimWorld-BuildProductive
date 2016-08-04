@@ -21,6 +21,13 @@ namespace BuildProductive
 
         internal static void GizmoGridDrawer_DrawGizmoGrid(IEnumerable<Gizmo> gizmos, float startX, out Gizmo mouseoverGizmo)
         {
+            Command_Action command_Action = new Command_Action();
+            command_Action.defaultLabel = "Test Icon";
+            command_Action.action = delegate
+            {
+            };
+            (gizmos as List<Gizmo>).Add(command_Action);
+
             GizmoGridDrawer.DrawGizmoGrid(gizmos, startX, out mouseoverGizmo);
         }
     }

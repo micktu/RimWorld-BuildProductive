@@ -35,20 +35,18 @@ namespace BuildProductive
             // Hook into Command.IconDrawColor
             Detour(typeof(Command), "get_IconDrawColor", BindingFlags.Instance | BindingFlags.NonPublic,
                    typeof(VerseExtensions), "Command_get_IconDrawColor", BindingFlags.Static | BindingFlags.NonPublic);
-
             /*
             if (Patcher == null)
             {
                 Patcher = new MethodCallPatcher();
                 Patcher.def = new ThingDef { tickerType = TickerType.Normal };
 
-                Patcher.AddPatch(inspectGizmoGrid, "DrawInspectGizmoGridFor",
+                Patcher.AddPatch(InspectGizmoGrid, "DrawInspectGizmoGridFor",
                                  typeof(GizmoGridDrawer), "DrawGizmoGrid",
                                  typeof(VerseExtensions), "GizmoGridDrawer_DrawGizmoGrid");
             }
             Find.TickManager.RegisterAllTickabilityFor(Patcher);
             */
-
             // Initialize Designator
             if (CopyDesignator == null)
             {
