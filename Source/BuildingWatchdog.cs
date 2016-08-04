@@ -103,7 +103,8 @@ namespace BuildProductive
         {
             // Designate power switch
             var flickable = building.GetComp<CompFlickable>();
-            if (flickable != null)
+            // Check if we need switching it off to avoid unnecessary tutorial prompt
+            if (!p.WantSwitchOn && flickable != null)
             {
                 Bootstrapper.WantSwitchOn.SetValue(flickable, p.WantSwitchOn);
                 FlickUtility.UpdateFlickDesignation(building);
