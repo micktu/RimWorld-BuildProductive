@@ -18,6 +18,8 @@ namespace BuildProductive
 		public static MethodCallPatcher Patcher;
 		public static GameObject PatcherContainer;
 
+        public static readonly bool InjectTestPatcher = false;
+
         public override bool Inject()
         {
             // Designator_Build private access
@@ -38,7 +40,7 @@ namespace BuildProductive
             Detour(typeof(Command), "get_IconDrawColor", BindingFlags.Instance | BindingFlags.NonPublic,
                    typeof(VerseExtensions), "Command_get_IconDrawColor", BindingFlags.Static | BindingFlags.NonPublic);
 
-			if (PatcherContainer == null)
+			if (InjectTestPatcher && PatcherContainer == null)
 			{
 				PatcherContainer = new GameObject();
 				GameObject.DontDestroyOnLoad(PatcherContainer);

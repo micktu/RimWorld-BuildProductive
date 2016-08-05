@@ -10,6 +10,8 @@ namespace BuildProductive
 
         private Building _building;
 
+        private Rot4 buildingRot;
+
         public Designator_BuildCopy() : base(PlaceholderDef)
         {
             defaultLabel = "BuildProductive.DesignatorBuildCopy".Translate();
@@ -58,44 +60,60 @@ namespace BuildProductive
         public override void DesignateSingleCell(IntVec3 c)
         {
             soundSucceeded = SoundDefOf.DesignatePlaceBuilding;
+
             base.DesignateSingleCell(c);
-            Bootstrapper.Watchdog.TryAddBuilding(c, _building);
+
+            if (_building != null)
+            {
+                Bootstrapper.Watchdog.TryAddBuilding(c, _building);
+            }
         }
 
         public override AcceptanceReport CanDesignateThing(Thing t)
         {
             var thing = Find.Selector.SingleSelectedThing;
 
-            // TODO Copy blueprints and frames
-
+            var blueprint = thing as Blueprint_Build;
+            var frame = thing as Frame;
             var building = thing as Building;
 
-            if (building == null) return false;
-            if (building.def.category != ThingCategory.Building) return false;
-            if (building.def.frameDef == null) return false;
-            if (building.Faction != Faction.OfPlayer)
+            if (frame != null)
             {
-                if (building.Faction != null) return false;
-                if (!building.ClaimableBy(Faction.OfPlayer)) return false;
+                entDef = frame.def.entityDefToBuild;
+                StuffDef = frame.Stuff;
             }
+            else if (building != null)
+            {
+                if (building.def.frameDef == null) return false;
 
-            entDef = building.def;
-            StuffDef = building.Stuff;
+                entDef = building.def;
+                StuffDef = building.Stuff;
+            }
+            else if (blueprint != null)
+            {
+                entDef = blueprint.def.entityDefToBuild;
+                StuffDef = blueprint.stuffToUse;
+            }
+            else return false;
 
             if (!Visible) return false;
 
-            icon = entDef.uiIcon;
+            var thingDef = entDef as ThingDef;
 
-            if (building.def.uiIconPath.NullOrEmpty())
+            icon = thingDef.uiIcon;
+
+            if (thingDef.uiIconPath.NullOrEmpty())
             {
-                iconProportions = building.def.graphicData.drawSize;
-                iconDrawScale = GenUI.IconDrawScale(building.def);
+                iconProportions = thingDef.graphicData.drawSize;
+                iconDrawScale = GenUI.IconDrawScale(thingDef);
             }
             else
             {
                 iconProportions = new Vector2(1f, 1f);
                 iconDrawScale = 1f;
             }
+
+            buildingRot = thing.Rotation;
 
             soundSucceeded = activateSound;
 
@@ -104,9 +122,11 @@ namespace BuildProductive
 
         public override void DesignateThing(Thing t)
         {
-            _building = t as Building;
             DesignatorManager.Select(this);
-            placingRot = _building.Rotation;
+            placingRot = buildingRot;
+
+            _building = t as Building;
+            if (_building is Frame) _building = null;
         }
     }
 }
