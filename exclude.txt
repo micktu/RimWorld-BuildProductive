@@ -1,5 +1,7 @@
 Source\
 exclude.txt
 deploy.cmd
+deploy.sh
+README.md
 .gitignore
 .gitattributes
