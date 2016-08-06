@@ -20,7 +20,7 @@ namespace BuildProductive
 		public static MethodCallPatcher Patcher;
 		public static GameObject PatcherContainer;
 
-        public static HookInjector2 HookPatcher;
+        public static HookInjector HookPatcher;
         public static GameObject HookPatcherContainer;
 
         public static readonly bool InjectTestPatcher = true;
@@ -75,7 +75,7 @@ namespace BuildProductive
                 {
                 HookPatcherContainer = new GameObject();
                 GameObject.DontDestroyOnLoad(HookPatcherContainer);
-                HookPatcher = HookPatcherContainer.AddComponent<HookInjector2>();
+                HookPatcher = HookPatcherContainer.AddComponent<HookInjector>();
 
                 HookPatcher.AddPatch(typeof(PostLoadInitter), "DoAllPostLoadInits",
                                  typeof(VerseExtensions), "PostLoadInitted_DoAllPostLoadInits");
