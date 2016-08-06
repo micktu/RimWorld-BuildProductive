@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
 using Verse;
 
@@ -29,6 +31,12 @@ namespace BuildProductive
             (gizmos as List<Gizmo>).Add(command_Action);
 
             GizmoGridDrawer.DrawGizmoGrid(gizmos, startX, out mouseoverGizmo);
+        }
+
+        internal static void PostLoadInitted_DoAllPostLoadInits()
+        {
+            PostLoadInitter.DoAllPostLoadInits();
+            Log.Message("!!! PostLoad!");
         }
     }
 }

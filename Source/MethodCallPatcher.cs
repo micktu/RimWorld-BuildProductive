@@ -6,7 +6,7 @@ using Verse;
 
 namespace BuildProductive
 {
-    class MethodCallPatcher : MonoBehaviour
+    public class MethodCallPatcher : MonoBehaviour
     {
         public struct PatchInfo
         {
@@ -60,10 +60,17 @@ namespace BuildProductive
             var pi = new PatchInfo();
 
             pi.SourceMethod = sourceType.GetMethod(sourceName);
+            if (pi.SourceMethod == null) pi.SourceMethod = sourceType.GetMethod(sourceName, BindingFlags.Static | BindingFlags.NonPublic);
+            if (pi.SourceMethod == null) Log.Warning("Source method not found");
+
             pi.TargetMethod = targetType.GetMethod(targetName);
+            if (pi.TargetMethod == null) pi.TargetMethod = targetType.GetMethod(targetName, BindingFlags.Static | BindingFlags.NonPublic);
+            if (pi.TargetMethod == null) Log.Warning("Target method not found");
 
             pi.ReplacementMethod = replacementType.GetMethod(replacementName, BindingFlags.Static | BindingFlags.NonPublic);
             //pi.ReplacementMethod = replacementType.GetMethod(replacementName);
+
+            if (pi.ReplacementMethod == null) Log.Warning("Replacement method not found");
 
             var sourcePtr = pi.SourceMethod.MethodHandle.GetFunctionPointer();
             var targetPtr = pi.TargetMethod.MethodHandle.GetFunctionPointer();
@@ -124,7 +131,7 @@ namespace BuildProductive
                 }
 
                 ptr++;
-                // check for LEAVE, RETN, zero padding sequencee
+                // check for LEAVE, RETN, zero padding sequence
                 leavePtr = (int*)ptr;
             } while (*leavePtr != 0xc3c9);
 
