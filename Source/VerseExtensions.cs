@@ -35,8 +35,8 @@ namespace BuildProductive
 
         internal static void PostLoadInitted_DoAllPostLoadInits()
         {
-            PostLoadInitter.DoAllPostLoadInits();
             Log.Message("!!! PostLoad!");
+            PostLoadInitter.DoAllPostLoadInits();
         }
     }
 }

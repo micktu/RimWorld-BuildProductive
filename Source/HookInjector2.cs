@@ -94,7 +94,7 @@ namespace BuildProductive
                 }
 
                 _buffer = new IntPtr(addr);
-                Log.Message(string.Format("HookInjector: Allocated {0}b at {1:X}.", _pageSize, addr));
+                Log.Message(string.Format("HookInjector: Allocated {0} bytes at {1:X}.", _pageSize, addr));
             }
             else
             {
@@ -245,28 +245,29 @@ namespace BuildProductive
             var stackAlloc = CopyStackAlloc(pi.SourceAddress64);
             WriteHookJump(pi.SourceAddress64, pi.HookAddress64, stackAlloc.Length);
 
-
             using (var w = new BinaryWriter(new UnmanagedMemoryStream(
                 (byte*)pi.HookAddress64, _pageSize - _offset, _pageSize - _offset, FileAccess.Write)))
             {
                 w.Write(new byte[] { 0x48, 0xB8 }); // movabsq $, %rax
                 w.Write(pi.TargetAddress64);
-                w.Write(new byte[] { 0x48, 0x3B, 0x04, 0x24 }); // cmpq (%rsp), %rax
-                w.Write(new byte[] { 0x0F, 0x8F, 0x20, 0x00, 0x00, 0x00 }); // jg strip
+                w.Write(new byte[] { 0x48, 0x39, 0x04, 0x24 }); // cmpq %rax, (%rsp)
+                w.Write(new byte[] { 0x7C, 0x12 }); // jl hook
 
                 w.Write(new byte[] { 0x48, 0xB8 }); // movabsq $, %rax
                 w.Write(FindEndAddress(pi.TargetAddress64));
                 w.Write(new byte[] { 0x48, 0x39, 0x04, 0x24 }); // cmpq %rax, (%rsp)
-                w.Write(new byte[] { 0x0F, 0x8F, 0x0C, 0x00, 0x00, 0x00 }); // jg strip
+                w.Write(new byte[] { 0x7F, 0x02 }); // jg hook
+                w.Write(new byte[] { 0xEB, 0x0C }); // jmp stackAlloc
 
+                // hook:
                 w.Write(new byte[] { 0x48, 0xB8 }); // movabsq $, %rax
                 w.Write(pi.TargetAddress64);
                 w.Write(new byte[] { 0xFF, 0xE0 }); // jmpq *%rax
 
-                // strip:
+                // stackAlloc:
                 w.Write(stackAlloc);
                 w.Write(new byte[] { 0x48, 0xB8 }); // movabsq $, %rax
-                w.Write(pi.SourceAddress64);
+                w.Write(pi.SourceAddress64 + stackAlloc.Length);
                 w.Write(new byte[] { 0xFF, 0xE0 }); // jmpq *%rax
 
                 w.Write(0);
