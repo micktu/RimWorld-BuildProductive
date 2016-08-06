@@ -48,15 +48,6 @@ namespace BuildProductive
             /*Detour(typeof(Command), "get_IconDrawColor", BindingFlags.Instance | BindingFlags.NonPublic,
                    typeof(VerseExtensions), "Command_get_IconDrawColor", BindingFlags.Static | BindingFlags.NonPublic);*/
 
-
-            var p1 = typeof(Command).GetMethod("ProcessInput").MethodHandle.GetFunctionPointer().ToInt32();
-            var p2 = typeof(Command).GetMethod("get_IconDrawColor", BindingFlags.Instance | BindingFlags.NonPublic).MethodHandle.GetFunctionPointer().ToInt32();
-            var p3 = typeof(GizmoGridDrawer).GetMethod("DrawGizmoGrid", BindingFlags.Static | BindingFlags.Public).MethodHandle.GetFunctionPointer().ToInt32();
-            var p4 = typeof(PostLoadInitter).GetMethod("DoAllPostLoadInits", BindingFlags.Static | BindingFlags.Public).MethodHandle.GetFunctionPointer().ToInt32();
-            var p5 = InspectGizmoGrid.GetMethod("DrawInspectGizmoGridFor", BindingFlags.Static | BindingFlags.Public).MethodHandle.GetFunctionPointer().ToInt32();
-
-            Log.Message(String.Format("ProcessInput: {0:X8}, IconDrawColor: {1:X8}, DrawGizmoGrid: {2:X8}, DoAllPostLoadInits: {3:X8}, DrawInspectGizmoGridFor: {4:X8}", p1, p2, p3, p4, p5));
-
             /*
             Log.Message("Initializing patcher.");
             if (InjectTestPatcher && PatcherContainer == null)
