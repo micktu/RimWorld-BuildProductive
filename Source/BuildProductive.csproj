@@ -53,10 +53,12 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AsmStream.cs" />
     <Compile Include="Designator_BuildCopy.cs" />
     <Compile Include="Bootstrapper.cs" />
     <Compile Include="HookInjector.cs" />
     <Compile Include="MethodCallPatcher.cs" />
+    <Compile Include="MethodSizeHelper.cs" />
     <Compile Include="Platform.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="BuildingWatchdog.cs" />

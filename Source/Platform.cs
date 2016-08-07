@@ -127,6 +127,9 @@ namespace BuildProductive
             public UInt16 ProcessorLevel;
             public UInt16 ProcessorRevision;
         }
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern bool VirtualProtect(IntPtr lpAddress, uint dwSize, MemoryProtection flNewProtect, out MemoryProtection lpflOldProtect);
     }
 }
 

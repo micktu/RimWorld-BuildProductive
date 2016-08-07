@@ -34,6 +34,8 @@ namespace BuildProductive
         private uint _memSize;
         private int _offset;
 
+        private MethodSizeHelper _methodSizeHelper;
+
         public HookInjector()
         {
             _memPtr = Platform.AllocRWE();
@@ -44,6 +46,8 @@ namespace BuildProductive
             }
 
             _memSize = Platform.PageSize;
+
+            _methodSizeHelper = new MethodSizeHelper();
 
             var p1 = typeof(Command).GetMethod("ProcessInput").MethodHandle.GetFunctionPointer().ToInt64();
             var p2 = typeof(Command).GetMethod("get_IconDrawColor", BindingFlags.Instance | BindingFlags.NonPublic).MethodHandle.GetFunctionPointer().ToInt64();
@@ -123,12 +127,21 @@ namespace BuildProductive
             return true;
         }
 
-        private unsafe bool InjectHook32(PatchInfo pi)
+        private bool InjectHook32(PatchInfo pi)
         {
             Message("Source: {0:X}, Target: {1:X}, Hook: {2:X}", pi.SourceAddress32, pi.TargetAddress32, pi.HookAddress32);
 
-           var endAddress = FindEndAddress32(pi.TargetAddress32);
-           if (endAddress == 0) return false;
+            var length = _methodSizeHelper.GetMethodSize(pi.TargetAddress32);
+
+            if (length == 0)
+            {
+                Log.Error("Method length not found.");
+                return false;
+            }
+
+           var endAddress = pi.TargetAddress32 + length;
+           //var endAddress = FindEndAddress32(pi.TargetAddress32);
+           //if (endAddress == 0) return false;
 
            var stackAlloc = CopyStackAlloc(pi.SourceAddress32);
 
@@ -138,96 +151,13 @@ namespace BuildProductive
                 return false;
            }
 
-           if (!WriteHookJump(pi.SourceAddress32, pi.HookAddress32, stackAlloc.Length))
-                return false;
+           //if (!WriteHookJump(pi.SourceAddress32, pi.HookAddress32, stackAlloc.Length))
+           //     return false;
 
            WriteProc32(pi, endAddress, stackAlloc);
 
            Message("Successfully patched.");
            return true;
-        }
-
-        private unsafe int FindEndAddress32(long procAddress)
-        {
-            var p = (byte*)procAddress;
-
-            int retPos = 0;
-            var zeroCount = 0;
-            var retSearchLimit = 60;
-
-            if (p[0] == 0x55 && p[1] == 0x8B && p[2] == 0xEC)
-            {
-                Message("Found header.");
-                p += 3;
-            }
-            else
-            {
-                Error("Unsupported method header.");
-                return 0;
-            }
-
-            try
-            {
-                while (true)
-                {
-                    if (p[0] == 0xC9 && (p[1] == 0xC3 || p[1] == 0xC2))
-                    {
-                        Message("Found return.");
-                        zeroCount = 0;
-                        retPos = (int)p + 1;
-                        p += 2;
-                    }
-
-                    if (retPos > 0)
-                    {
-                        if ((int)p - retPos > retSearchLimit)
-                        {
-                            Error("Hit search limit.");
-                            retPos = 0;
-                            break;
-                        }
-
-                        if (p[0] == 0)
-                        {
-                            zeroCount++;
-                            if (zeroCount > 4)
-                            {
-                                Message("Found zeros.");
-                                break;
-                            }
-                        }
-                        else
-                        {
-                            zeroCount = 0;
-
-                            if (p[0] == 0x55 && p[1] == 0x8B && p[2] == 0xEC)
-                            {
-                                Message("Found next proc.");
-                                break;
-                            }
-                        }
-                    }
-
-                    p++;
-                }
-            }
-            catch (NullReferenceException)
-            {
-                Message("Unallocated memory reached.");
-            }
-
-            if (retPos > 0)
-            {
-                var end = retPos + 1;
-                Message("Method length: " + (end - procAddress));
-                return end;
-            }
-            else
-            {
-                Error("Method length not found.");
-            }
-
-            return 0;
         }
 
         private unsafe long FindEndAddress64(long procAddress)
@@ -434,38 +364,29 @@ namespace BuildProductive
 
         private unsafe void WriteProc32(PatchInfo pi, int endAddress, byte[] stackAlloc)
         {
-            int addr = 0;
+            var s = new AsmStream(pi.HookAddress32);
 
-            using (var w = new BinaryWriter(new UnmanagedMemoryStream(
-                (byte*)pi.HookAddress32, _memSize - _offset, _memSize - _offset, FileAccess.Write)))
-            {
-                w.Write(new byte[] { 0xB8 }); // mov eax, $
-                w.Write(pi.TargetAddress32);
-                w.Write(new byte[] { 0x39, 0x04, 0x24 }); // cmp [esp], eax
-                w.Write(new byte[] { 0x7C, 0x0C }); // jl hook
+            s.WriteJmp(pi.TargetAddress32);
+            var mainAddr = s.ToInt64();
 
-                w.Write(new byte[] { 0xB8 }); // mov eax, $
-                w.Write(endAddress);
-                w.Write(new byte[] { 0x39, 0x04, 0x24 }); // cmp [esp], eax
-                w.Write(new byte[] { 0x7F, 0x02 }); // jg hook
-                w.Write(new byte[] { 0xEB, 0x05 }); // jmp stackAlloc
+            s.WriteMovXaxImm(pi.TargetAddress32);
+            s.WriteCmpXspXax();
+            s.WriteJl8(pi.HookAddress32);
 
-                // hook:
-                addr = pi.HookAddress32 + (int)w.BaseStream.Position;
-                w.Write(new byte[] { 0xE9 }); // JMP $
-                w.Write(pi.TargetAddress32 - addr - 5);
+            s.WriteMovXaxImm(endAddress);
+            s.WriteCmpXspXax();
+            s.WriteJg8(pi.HookAddress32);
 
-                // stackAlloc:
-                w.Write(stackAlloc);
-                addr = pi.HookAddress32 + (int)w.BaseStream.Position;
-                w.Write(new byte[] { 0xE9 }); // JMP $
-                w.Write(pi.SourceAddress32 + stackAlloc.Length - addr - 5);
+            s.Write(stackAlloc);
+            s.WriteJmp(pi.SourceAddress32 + stackAlloc.Length);
 
-                w.Write(0);
-                w.Write(0);
+            s.WriteLong(0);
 
-                _offset += (int)w.BaseStream.Position;
-            }
+            _offset = Convert.ToInt32(s.ToInt64() - _memPtr.ToInt64());
+
+            s = new AsmStream(pi.SourceAddress32);
+            s.WriteJmpRel32(mainAddr);
+            s.WriteNop(stackAlloc.Length -  ((int)s - pi.SourceAddress32));
         }
 
         private unsafe void WriteProc64(PatchInfo pi, long endAddress, byte[] stackAlloc)
