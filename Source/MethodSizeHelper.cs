@@ -55,14 +55,9 @@ namespace BuildProductive
             {
                 var code = *p;
                 p++;
-                var size = *p;
+                if (code == address) return *p;
                 p++;
-
-                Log.Message(String.Format("Address: {0:X}, size: {1}", code, size));
-
-                if (code == address) return size;
             }
-
             return 0;
         }
     }
