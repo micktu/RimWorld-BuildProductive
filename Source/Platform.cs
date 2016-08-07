@@ -16,7 +16,7 @@ namespace BuildProductive
 
         public static IntPtr AllocRWE()
         {
-            IntPtr ptr = IntPtr.Zero;
+            IntPtr ptr;
 
             if (IntPtr.Size == 8)
             {
@@ -29,6 +29,7 @@ namespace BuildProductive
                 if (result != 0)
                 {
                     Log.Error(string.Format("mprotect() failed at {0:X16} (error {1}))", addr, Marshal.GetLastWin32Error()));
+                    return IntPtr.Zero;
                 }
 
                 ptr = new IntPtr(addr);
@@ -36,8 +37,12 @@ namespace BuildProductive
             }
             else
             {
-                _pageSize = 0x1000; // FIXME Maybe
+                SYSTEM_INFO si;
+                GetSystemInfo(out si);
+                _pageSize = si.PageSize;
+
                 ptr = Platform.VirtualAllocEx(Process.GetCurrentProcess().Handle, IntPtr.Zero, _pageSize, AllocationType.Commit, MemoryProtection.ExecuteReadWrite);
+                Log.Message(string.Format("Allocated {0} bytes at 0x{1:X}.", _pageSize, (uint)ptr));
             }
 
             return ptr;
@@ -83,6 +88,44 @@ namespace BuildProductive
             GuardModifierflag = 0x100,
             NoCacheModifierflag = 0x200,
             WriteCombineModifierflag = 0x400
+        }
+
+        [DllImport("kernel32.dll", SetLastError = false)]
+        public static extern void GetSystemInfo(out SYSTEM_INFO Info);
+
+        public enum ProcessorArchitecture
+        {
+            X86 = 0,
+            X64 = 9,
+            @Arm = -1,
+            Itanium = 6,
+            Unknown = 0xFFFF,
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        public struct SYSTEM_INFO_UNION
+        {
+            [FieldOffset(0)]
+            public UInt32 OemId;
+            [FieldOffset(0)]
+            public UInt16 ProcessorArchitecture;
+            [FieldOffset(2)]
+            public UInt16 Reserved;
+        }
+
+        [StructLayout(LayoutKind.Sequential, Pack = 1)]
+        public struct SYSTEM_INFO
+        {
+            public SYSTEM_INFO_UNION CpuInfo;
+            public UInt32 PageSize;
+            public UInt32 MinimumApplicationAddress;
+            public UInt32 MaximumApplicationAddress;
+            public UInt32 ActiveProcessorMask;
+            public UInt32 NumberOfProcessors;
+            public UInt32 ProcessorType;
+            public UInt32 AllocationGranularity;
+            public UInt16 ProcessorLevel;
+            public UInt16 ProcessorRevision;
         }
     }
 }

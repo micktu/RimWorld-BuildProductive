@@ -91,17 +91,146 @@ namespace BuildProductive
                 pi.SourceAddress32 = sourcePtr.ToInt32();
                 pi.TargetAddress32 = targetPtr.ToInt32();
                 pi.HookAddress32 = _memPtr.ToInt32() + _offset;
-
             }
 
             _patches.Add(pi);
             Message("MethodCallPatcher: Patching {0}.{1} with {2}.{3}.", sourceType.Name, pi.SourceMethod.Name, targetType.Name, pi.TargetMethod.Name);
 
-            //InjectHook32(pi);
-            InjectHook64(pi);
+            if (pi.Is64) InjectHook64(pi);
+            else InjectHook32(pi);
         }
 
-        private unsafe long FindEndAddress(long procAddress)
+        private unsafe bool InjectHook64(PatchInfo pi)
+        {
+            Message("Source: {0:X}, Target: {1:X}, Hook: {2:X}", pi.SourceAddress64, pi.TargetAddress64, pi.HookAddress64);
+            
+            var endAddress = FindEndAddress64(pi.TargetAddress64);
+            if (endAddress == 0) return false;
+
+            var stackAlloc = CopyStackAlloc(pi.SourceAddress64);
+
+            if (stackAlloc.Length < 5)
+            {
+                Error("Stack alloc too small to be patched.");
+                return false;
+            }
+
+            if (!WriteHookJump(pi.SourceAddress64, pi.HookAddress64, stackAlloc.Length)) return false;
+
+            WriteProc64(pi, endAddress, stackAlloc);
+
+            Message("Successfully patched.");
+            return true;
+        }
+
+        private unsafe bool InjectHook32(PatchInfo pi)
+        {
+            Message("Source: {0:X}, Target: {1:X}, Hook: {2:X}", pi.SourceAddress32, pi.TargetAddress32, pi.HookAddress32);
+
+           var endAddress = FindEndAddress32(pi.TargetAddress32);
+           if (endAddress == 0) return false;
+
+           var stackAlloc = CopyStackAlloc(pi.SourceAddress32);
+
+           if (stackAlloc.Length < 5)
+           {
+                Error("Stack alloc too small to be patched.");
+                return false;
+           }
+
+           if (!WriteHookJump(pi.SourceAddress32, pi.HookAddress32, stackAlloc.Length))
+                return false;
+
+           WriteProc32(pi, endAddress, stackAlloc);
+
+           Message("Successfully patched.");
+           return true;
+        }
+
+        private unsafe int FindEndAddress32(long procAddress)
+        {
+            var p = (byte*)procAddress;
+
+            int retPos = 0;
+            var zeroCount = 0;
+            var retSearchLimit = 60;
+
+            if (p[0] == 0x55 && p[1] == 0x8B && p[2] == 0xEC)
+            {
+                Message("Found header.");
+                p += 3;
+            }
+            else
+            {
+                Error("Unsupported method header.");
+                return 0;
+            }
+
+            try
+            {
+                while (true)
+                {
+                    if (p[0] == 0xC9 && (p[1] == 0xC3 || p[1] == 0xC2))
+                    {
+                        Message("Found return.");
+                        zeroCount = 0;
+                        retPos = (int)p + 1;
+                        p += 2;
+                    }
+
+                    if (retPos > 0)
+                    {
+                        if ((int)p - retPos > retSearchLimit)
+                        {
+                            Error("Hit search limit.");
+                            retPos = 0;
+                            break;
+                        }
+
+                        if (p[0] == 0)
+                        {
+                            zeroCount++;
+                            if (zeroCount > 4)
+                            {
+                                Message("Found zeros.");
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            zeroCount = 0;
+
+                            if (p[0] == 0x55 && p[1] == 0x8B && p[2] == 0xEC)
+                            {
+                                Message("Found next proc.");
+                                break;
+                            }
+                        }
+                    }
+
+                    p++;
+                }
+            }
+            catch (NullReferenceException)
+            {
+                Message("Unallocated memory reached.");
+            }
+
+            if (retPos > 0)
+            {
+                var end = retPos + 1;
+                Message("Method length: " + (end - procAddress));
+                return end;
+            }
+            else
+            {
+                Error("Method length not found.");
+            }
+
+            return 0;
+        }
+
+        private unsafe long FindEndAddress64(long procAddress)
         {
             var p = (byte*)procAddress;
 
@@ -248,7 +377,7 @@ namespace BuildProductive
             var p = (byte*)procAddress;
 
             var i = 0;
-            // look for subq rsp
+            // look for sub esp, $ or subq $, %rsp
             while (true)
             {
                 if (p[i] == 0x83 && p[i + 1] == 0xEC)
@@ -302,25 +431,44 @@ namespace BuildProductive
             return true;
         }
 
-        private unsafe bool InjectHook64(PatchInfo pi)
+        private unsafe void WriteProc32(PatchInfo pi, int endAddress, byte[] stackAlloc)
         {
-            Message("Source: {0:X}, Target: {1:X}, Hook: {2:X}", pi.SourceAddress64, pi.TargetAddress64, pi.HookAddress64);
+            int addr = 0;
 
-            var endAddress = FindEndAddress(pi.TargetAddress64);
-            if (endAddress == 0)return false;
-
-            var stackAlloc = CopyStackAlloc(pi.SourceAddress64);
-
-            if (stackAlloc.Length < 5)
+            using (var w = new BinaryWriter(new UnmanagedMemoryStream(
+                (byte*)pi.HookAddress32, _memSize - _offset, _memSize - _offset, FileAccess.Write)))
             {
-                Error("Stack alloc too small to be patched.");
-                return false;
+                w.Write(new byte[] { 0xB8 }); // mov eax, $
+                w.Write(pi.TargetAddress32);
+                w.Write(new byte[] { 0x39, 0x04, 0x24 }); // cmp [esp], eax
+                w.Write(new byte[] { 0x7C, 0x0C }); // jl hook
+
+                w.Write(new byte[] { 0xB8 }); // mov eax, $
+                w.Write(endAddress);
+                w.Write(new byte[] { 0x39, 0x04, 0x24 }); // cmp [esp], eax
+                w.Write(new byte[] { 0x7F, 0x02 }); // jg hook
+                w.Write(new byte[] { 0xEB, 0x05 }); // jmp stackAlloc
+
+                // hook:
+                addr = pi.HookAddress32 + (int)w.BaseStream.Position;
+                w.Write(new byte[] { 0xE9 }); // JMP $
+                w.Write(pi.TargetAddress32 - addr - 5);
+
+                // stackAlloc:
+                w.Write(stackAlloc);
+                addr = pi.HookAddress32 + (int)w.BaseStream.Position;
+                w.Write(new byte[] { 0xE9 }); // JMP $
+                w.Write(pi.SourceAddress32 + stackAlloc.Length - addr - 5);
+
+                w.Write(0);
+                w.Write(0);
+
+                _offset += (int)w.BaseStream.Position;
             }
+        }
 
-            var result = WriteHookJump(pi.SourceAddress64, pi.HookAddress64, stackAlloc.Length);
-
-            if (!result) return false;
-
+        private unsafe void WriteProc64(PatchInfo pi, long endAddress, byte[] stackAlloc)
+        {
             using (var w = new BinaryWriter(new UnmanagedMemoryStream(
                 (byte*)pi.HookAddress64, _memSize - _offset, _memSize - _offset, FileAccess.Write)))
             {
@@ -351,10 +499,6 @@ namespace BuildProductive
 
                 _offset += (int)w.BaseStream.Position;
             }
-
-            Message("Successfull patched.");
-
-            return true;
         }
 
         private void Message(string message)

@@ -55,8 +55,9 @@
   <ItemGroup>
     <Compile Include="Designator_BuildCopy.cs" />
     <Compile Include="Bootstrapper.cs" />
-    <Compile Include="HookInjector2.cs" />
+    <Compile Include="HookInjector.cs" />
     <Compile Include="MethodCallPatcher.cs" />
+    <Compile Include="Platform.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="BuildingWatchdog.cs" />
     <Compile Include="VerseExtensions.cs" />
