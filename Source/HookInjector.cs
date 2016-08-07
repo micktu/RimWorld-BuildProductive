@@ -313,6 +313,7 @@ namespace BuildProductive
                         if (p[0] == 0xC9 && p[1] == 0xC3)
                         {
                             Message("Return found.");
+                            zeroCount = 0;
                             retPos = (long)p + 1;
                             p += 2;
                             continue;
