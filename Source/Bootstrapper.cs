@@ -82,6 +82,7 @@ namespace BuildProductive
                 HookPatcher.Inject(typeof(PreLoadUtility), "CheckVersionAndLoad", typeof(VerseExtensions));
                 HookPatcher.Inject(typeof(PostLoadInitter), "DoAllPostLoadInits", typeof(VerseExtensions));
                 HookPatcher.Inject(typeof(GizmoGridDrawer), "DrawGizmoGrid", typeof(VerseExtensions));
+                HookPatcher.Inject(typeof(Building), "SetFaction", typeof(VerseExtensions));
             }
 
             /*

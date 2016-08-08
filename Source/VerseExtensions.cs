@@ -1,4 +1,5 @@
-﻿using System;
+﻿using RimWorld;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
@@ -43,6 +44,12 @@ namespace BuildProductive
         {
             Log.Message("!!! CheckVersionAndLoad");
             PreLoadUtility.CheckVersionAndLoad(path, mode, loadAct);
+        }
+
+        internal static void Building_SetFaction(this Building building, Faction newFaction, Pawn recruiter = null)
+        {
+            Log.Message("SetFaction");
+            building.SetFaction(newFaction, recruiter);
         }
     }
 }
