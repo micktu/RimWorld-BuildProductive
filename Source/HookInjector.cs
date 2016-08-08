@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using Verse;
 
 namespace BuildProductive
@@ -40,18 +41,8 @@ namespace BuildProductive
                 return;
             }
 
-            // The reason is doing it after CCL does it
+            // Patching has to be done after other mods (e.g. CCL) do it in order to handle rerouting
             LongEventHandler.QueueLongEvent(PatchAll, "HookInjector_PatchAll", false, null);
-            
-            /*
-            var p1 = typeof(Command).GetMethod("ProcessInput").MethodHandle.GetFunctionPointer().ToInt64();
-            var p2 = typeof(Command).GetMethod("get_IconDrawColor", BindingFlags.Instance | BindingFlags.NonPublic).MethodHandle.GetFunctionPointer().ToInt64();
-            var p3 = typeof(GizmoGridDrawer).GetMethod("DrawGizmoGrid", BindingFlags.Static | BindingFlags.Public).MethodHandle.GetFunctionPointer().ToInt64();
-            var p4 = typeof(PostLoadInitter).GetMethod("DoAllPostLoadInits", BindingFlags.Static | BindingFlags.Public).MethodHandle.GetFunctionPointer().ToInt64();
-            var p5 = Bootstrapper.InspectGizmoGrid.GetMethod("DrawInspectGizmoGridFor", BindingFlags.Static | BindingFlags.Public).MethodHandle.GetFunctionPointer().ToInt64();
-
-            Message("ProcessInput: {0:X}, IconDrawColor: {1:X}, DrawGizmoGrid: {2:X}, DoAllPostLoadInits: {3:X}, DrawInspectGizmoGridFor: {4:X}", p1, p2, p3, p4, p5);
-            */
         }
 
         public void Inject(Type sourceType, string sourceName, Type targetType, string targetName = "")
@@ -87,14 +78,13 @@ namespace BuildProductive
 
             pi.TargetSize = Platform.GetJitMethodSize(pi.TargetPtr);
 
+            _patches.Add(pi);
             if (_isInitialized) Patch(pi);
-            else _patches.Add(pi);
         }
 
         void PatchAll()
         {
             foreach(var pi in _patches) Patch(pi);
-            _patches.Clear();
             _isInitialized = true;
         }
 
@@ -112,9 +102,9 @@ namespace BuildProductive
             s.WriteJmp(pi.TargetPtr);
             var mainPtr = s.ToIntPtr();
 
-            // Copy source proc stack alloc instructions
             var src = new AsmHelper(pi.SourcePtr);
 
+            // Check if already patched
             var isAlreadyPatched = false;
             var jmpLoc = src.PeekJmp();
             if (jmpLoc != 0)
@@ -124,6 +114,7 @@ namespace BuildProductive
                 isAlreadyPatched = true;
             }
 
+            // Jump to detour if called from outside of detour
             var startAddress = pi.TargetPtr.ToInt64();
             var endAddress = startAddress + pi.TargetSize;
 
@@ -142,20 +133,33 @@ namespace BuildProductive
             }
             else
             {
+                // Copy source proc stack alloc instructions
                 var stackAlloc = src.PeekStackAlloc();
 
                 if (stackAlloc.Length < 5)
                 {
-                    Error("Stack alloc too small to be patched, aborting.");
-                    return false;
-                }
-                s.Write(stackAlloc);
-                s.WriteJmp(new IntPtr(pi.SourcePtr.ToInt64() + stackAlloc.Length));
+                    Warning("Stack alloc too small to be patched, attempting full copy.");
 
-                // Write jump to main proc in source proc
-                src.WriteJmpRel32(mainPtr);
-                var srcOffset = (int)(src.ToInt64() - pi.SourcePtr.ToInt64());
-                src.WriteNop(stackAlloc.Length - srcOffset);
+                    var size = (Platform.GetJitMethodSize(pi.SourcePtr));
+                    var bytes = new byte[size];
+                    Marshal.Copy(pi.SourcePtr, bytes, 0, size);
+                    s.Write(bytes);
+
+                    // Write jump to main proc in source proc
+                    src.WriteJmp(mainPtr);
+                }
+                else
+                {
+                    s.Write(stackAlloc);
+                    s.WriteJmp(new IntPtr(pi.SourcePtr.ToInt64() + stackAlloc.Length));
+
+                    // Write jump to main proc in source proc
+                    if (stackAlloc.Length < 12) src.WriteJmpRel32(mainPtr);
+                    else src.WriteJmp(mainPtr);
+
+                    var srcOffset = (int)(src.ToInt64() - pi.SourcePtr.ToInt64());
+                    src.WriteNop(stackAlloc.Length - srcOffset);
+                }
             }
 
             s.WriteLong(0);

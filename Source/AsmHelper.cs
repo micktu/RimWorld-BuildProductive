@@ -62,11 +62,13 @@ namespace BuildProductive
         {
             var p = (byte*)_value;
 
+            // Look for jmp $
             if (p[0] == 0xE9)
             {
                 var dp = (int*)(_value + 1);
                 return (*dp + _value + 5);
             }
+            // Look for movq $, %rax; jmp %rax
             else if (p[0] == 0x48 && p[1] == 0xB8 && p[10] == 0xFF && p[11] == 0xE0)
             {
                 var lp = (long*)(_value + 2);
@@ -81,6 +83,7 @@ namespace BuildProductive
             WriteMovImmRax(new IntPtr(value));
         }
 
+        // mov $, %rax
         public void WriteMovImmRax(IntPtr ptr)
         {
             WriteRexW();
@@ -88,6 +91,7 @@ namespace BuildProductive
             WriteIntPtr(ptr);
         }
 
+        // movq $, %rax; jmp %rax
         public void WriteJmp(IntPtr ptr)
         {
             if (Is64)
@@ -98,6 +102,7 @@ namespace BuildProductive
             else WriteJmpRel32(ptr);
         }
 
+        // call $rel32
         public void WriteCallRel32(long address)
         {
             var offset = Convert.ToInt32(address - _value - 5);
@@ -105,6 +110,7 @@ namespace BuildProductive
             WriteInt(offset);
         }
 
+        // jmp $rel32
         public void WriteJmpRel32(IntPtr ptr)
         {
             var offset = Convert.ToInt32(ptr.ToInt64() - _value - 5);
@@ -112,12 +118,14 @@ namespace BuildProductive
             WriteInt(offset);
         }
 
+        // cmp %rax, (%rsp)
         public void WriteCmpRaxRsp()
         {
             WriteRexW();
             Write(new byte[] { 0x39, 0x04, 0x24 });
         }
 
+        // jmp $rel8
         public void WriteJmp8(IntPtr ptr)
         {
             var offset = Convert.ToSByte(ptr.ToInt64() - _value - 2);
@@ -125,7 +133,7 @@ namespace BuildProductive
             WriteByte((byte)offset);
         }
 
-
+        // jl $rel8
         public void WriteJl8(IntPtr ptr)
         {
             var offset = Convert.ToSByte(ptr.ToInt64() - _value - 2);
@@ -133,6 +141,7 @@ namespace BuildProductive
             WriteByte((byte)offset);
         }
 
+        // jg $rel8
         public void WriteJg8(IntPtr ptr)
         {
             var offset = Convert.ToSByte(ptr.ToInt64() - _value - 2);
@@ -140,11 +149,13 @@ namespace BuildProductive
             WriteByte((byte)offset);
         }
 
+        // x64 extension prefix
         public void WriteRexW()
         {
             if (Is64) WriteByte(0x48);
         }
 
+        // nop
         public void WriteNop(int count = 1)
         {
             for (var i = 0; i < count; i++)
