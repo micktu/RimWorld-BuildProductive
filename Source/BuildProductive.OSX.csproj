@@ -13,7 +13,6 @@
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile>
     </TargetFrameworkProfile>
-    <ReleaseVersion>0.15</ReleaseVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -58,10 +57,15 @@
   <ItemGroup>
     <Compile Include="Designator_BuildCopy.cs" />
     <Compile Include="Bootstrapper.cs" />
-    <Compile Include="MethodCallPatcher.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="BuildingWatchdog.cs" />
     <Compile Include="VerseExtensions.cs" />
+    <Compile Include="HookInjector.cs" />
+    <Compile Include="Platform.cs" />
+    <Compile Include="AsmHelper.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
@@ -71,4 +75,7 @@
   <Target Name="AfterBuild">
   </Target>
   -->
+   <Target Name="AfterBuild">
+    <Exec Command="./deploy.sh" WorkingDirectory="$(SolutionDir)/.." />
+  </Target>
 </Project>

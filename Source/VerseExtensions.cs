@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using RimWorld;
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 using Verse;
 
@@ -29,6 +31,24 @@ namespace BuildProductive
             (gizmos as List<Gizmo>).Add(command_Action);
 
             GizmoGridDrawer.DrawGizmoGrid(gizmos, startX, out mouseoverGizmo);
+        }
+
+        internal static void PostLoadInitter_DoAllPostLoadInits()
+        {
+            PostLoadInitter.DoAllPostLoadInits();
+            Log.Message("!!! PostLoad!");
+        }
+
+        internal static void PreLoadUtility_CheckVersionAndLoad(string path, ScribeMetaHeaderUtility.ScribeHeaderMode mode, Action loadAct)
+        {
+            Log.Message("!!! CheckVersionAndLoad");
+            PreLoadUtility.CheckVersionAndLoad(path, mode, loadAct);
+        }
+
+        internal static void Building_SetFaction(this Building building, Faction newFaction, Pawn recruiter = null)
+        {
+            Log.Message("SetFaction");
+            building.SetFaction(newFaction, recruiter);
         }
     }
 }

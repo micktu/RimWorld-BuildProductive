@@ -4,10 +4,12 @@ using UnityEngine;
 using Verse;
 using RimWorld;
 using CommunityCoreLibrary;
+using CommunityCoreLibrary.Detour;
 
 namespace BuildProductive
 {
-    class Bootstrapper : SpecialInjector
+    [StaticConstructorOnStartup]
+    class Bootstrapper : MonoBehaviour
     {
         public static Type InspectGizmoGrid;
         public static FieldInfo StuffDefField, WriteStuffField, GizmoListField, ObjListField, WantSwitchOn, AutoRearmField, HoldFireField;
@@ -15,19 +17,23 @@ namespace BuildProductive
         public static Designator_BuildCopy CopyDesignator;
         public static BuildingWatchdog Watchdog;
 
-		public static MethodCallPatcher Patcher;
 		public static GameObject PatcherContainer;
 
-        public static readonly bool InjectTestPatcher = false;
+        public static HookInjector HookPatcher;
+        public static GameObject HookPatcherContainer;
 
-        public override bool Inject()
+        public static readonly bool InjectTestPatcher = true;
+
+        static Bootstrapper()
         {
+            Log.Message("BuildProductive has arrived.");
+
             // Designator_Build private access
             StuffDefField = GetInstancePrivateField(typeof(Designator_Build), "stuffDef");
             WriteStuffField = GetInstancePrivateField(typeof(Designator_Build), "writeStuff");
 
             InspectGizmoGrid = typeof(GizmoGridDrawer).Assembly.GetType("RimWorld.InspectGizmoGrid");
-            
+
             //GizmoListField = GetStaticPrivateField(inspectGizmoGrid, "gizmoList");
             //ObjListField = GetStaticPrivateField(inspectGizmoGrid, "objList");
 
@@ -36,28 +42,59 @@ namespace BuildProductive
             AutoRearmField = GetInstancePrivateField(typeof(Building_TrapRearmable), "autoRearm");
             HoldFireField = GetInstancePrivateField(typeof(Building_TurretGun), "holdFire");
 
+            Log.Message("Detouring.");
             // Hook into Command.IconDrawColor
-            Detour(typeof(Command), "get_IconDrawColor", BindingFlags.Instance | BindingFlags.NonPublic,
-                   typeof(VerseExtensions), "Command_get_IconDrawColor", BindingFlags.Static | BindingFlags.NonPublic);
+            /*Detour(typeof(Command), "get_IconDrawColor", BindingFlags.Instance | BindingFlags.NonPublic,
+                   typeof(VerseExtensions), "Command_get_IconDrawColor", BindingFlags.Static | BindingFlags.NonPublic);*/
 
-			if (InjectTestPatcher && PatcherContainer == null)
-			{
-				PatcherContainer = new GameObject();
-				GameObject.DontDestroyOnLoad(PatcherContainer);
-				Patcher = PatcherContainer.AddComponent<MethodCallPatcher>();
+            /*
+            Log.Message("Initializing patcher.");
+            if (InjectTestPatcher && PatcherContainer == null)
+            {
+                PatcherContainer = new GameObject();
+                GameObject.DontDestroyOnLoad(PatcherContainer);
+                Patcher = PatcherContainer.AddComponent<MethodCallPatcher>();
 
-				Patcher.AddPatch(InspectGizmoGrid, "DrawInspectGizmoGridFor",
-								 typeof(GizmoGridDrawer), "DrawGizmoGrid",
-								 typeof(VerseExtensions), "GizmoGridDrawer_DrawGizmoGrid");
-			}
+                var preLoadUtility = typeof(StatWorker_Extensions).Assembly.GetType("CommunityCoreLibrary.Detour._PreLoadUtility", true);
 
-			// Initialize Designator
-			if (CopyDesignator == null)
+                Patcher.AddPatch(preLoadUtility, "_CheckVersionAndLoad",
+                                 typeof(PostLoadInitter), "DoAllPostLoadInits",
+                                 typeof(VerseExtensions), "PostLoadInitted_DoAllPostLoadInits");
+
+                Patcher.AddPatch(typeof(PreLoadUtility), "CheckVersionAndLoad",
+                                 typeof(PostLoadInitter), "DoAllPostLoadInits",
+                                 typeof(VerseExtensions), "PostLoadInitted_DoAllPostLoadInits");
+                
+                Patcher.AddPatch(InspectGizmoGrid, "DrawInspectGizmoGridFor",
+                                 typeof(GizmoGridDrawer), "DrawGizmoGrid",
+                                 typeof(VerseExtensions), "GizmoGridDrawer_DrawGizmoGrid");
+            }
+            */
+            if (InjectTestPatcher && HookPatcherContainer == null)
+                {
+                /*
+                HookPatcherContainer = new GameObject();
+                GameObject.DontDestroyOnLoad(HookPatcherContainer);
+                HookPatcher = HookPatcherContainer.AddComponent<HookInjector>();
+                */
+
+                HookPatcher = new HookInjector();
+                HookPatcher.Inject(typeof(PostLoadInitter), "DoAllPostLoadInits", typeof(VerseExtensions));
+                HookPatcher.Inject(typeof(Building), "SetFaction", typeof(VerseExtensions));
+                HookPatcher.Inject(typeof(GizmoGridDrawer), "DrawGizmoGrid", typeof(VerseExtensions));
+                HookPatcher.Inject(typeof(PreLoadUtility), "CheckVersionAndLoad", typeof(VerseExtensions));
+            }
+
+            /*
+            Log.Message("Initializing designator.");
+            // Initialize Designator
+            if (CopyDesignator == null)
             {
                 CopyDesignator = new Designator_BuildCopy();
             }
             ReverseDesignatorDatabase.AllDesignators.Add(CopyDesignator);
-            
+
+            Log.Message("Initializing watchdog.");
             // Initialize ticker
             if (Watchdog == null)
             {
@@ -65,8 +102,9 @@ namespace BuildProductive
                 Watchdog.def = new ThingDef { tickerType = TickerType.Normal };
             }
             Find.TickManager.RegisterAllTickabilityFor(Watchdog);
-            
-            return true;
+            */
+
+            Log.Message("BuildProductive initalized.");
         }
 
         public static bool Detour(Type srcType, string srcName, BindingFlags srcFlags, Type dstType, string dstName, BindingFlags dstFlags)

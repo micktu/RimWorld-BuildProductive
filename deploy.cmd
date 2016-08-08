@@ -3,4 +3,3 @@ SET dir="c:\Program Files (x86)\Steam\steamapps\common\RimWorld\Mods\BuildProduc
 rd /s /q %dir%
 
 xcopy *.* %dir% /s /exclude:exclude.txt
-
