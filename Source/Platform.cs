@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using UnityEngine;
 using Verse;
 
 namespace BuildProductive
@@ -83,11 +84,47 @@ namespace BuildProductive
             return info.code_size;
         }
 
-        [DllImport("__Internal")]
-        public static extern IntPtr mono_jit_info_table_find(IntPtr domain, IntPtr addr);
+        public static IntPtr mono_domain_get()
+        {
+            if (Application.platform == RuntimePlatform.LinuxPlayer)
+            {
+                if (IntPtr.Size == 8) return linux_64_mono_domain_get();
+                else return linux_86_mono_domain_get();
+            }
 
-        [DllImport("__Internal")]
-        public static extern IntPtr mono_domain_get();
+            return real_mono_domain_get();
+        }
+
+        public static IntPtr mono_jit_info_table_find(IntPtr domain, IntPtr addr)
+        {
+            if (Application.platform == RuntimePlatform.LinuxPlayer)
+            {
+                if (IntPtr.Size == 8) return linux_64_mono_jit_info_table_find(domain, addr);
+                else return linux_86_mono_jit_info_table_find(domain, addr);
+            }
+
+            return real_mono_jit_info_table_find(domain, addr);
+        }
+
+        // Because everything is great with Linux, Mono, and Unity
+        [DllImport("__Internal", EntryPoint = "mono_jit_info_table_find")]
+        public static extern IntPtr real_mono_jit_info_table_find(IntPtr domain, IntPtr addr);
+
+        [DllImport("__Internal", EntryPoint = "mono_domain_get")]
+        public static extern IntPtr real_mono_domain_get();
+
+        [DllImport("RimWorldLinux_Data/Mono/x86_64/libmono.so", EntryPoint = "mono_jit_info_table_find")]
+        public static extern IntPtr linux_64_mono_jit_info_table_find(IntPtr domain, IntPtr addr);
+
+        [DllImport("RimWorldLinux_Data/Mono/x86_64/libmono.so", EntryPoint = "mono_domain_get")]
+        public static extern IntPtr linux_64_mono_domain_get();
+
+        [DllImport("RimWorldLinux_Data/Mono/x86/libmono.so", EntryPoint = "mono_jit_info_table_find")]
+        public static extern IntPtr linux_86_mono_jit_info_table_find(IntPtr domain, IntPtr addr);
+
+        [DllImport("RimWorldLinux_Data/Mono/x86/libmono.so", EntryPoint = "mono_domain_get")]
+        public static extern IntPtr linux_86_mono_domain_get();
+
 
         [StructLayout(LayoutKind.Sequential)]
         public struct MonoJitInfo
