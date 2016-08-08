@@ -59,6 +59,7 @@ namespace BuildProductive
 
             pi.SourceMethod = sourceType.GetMethod(sourceName);
             if (pi.SourceMethod == null) pi.SourceMethod = sourceType.GetMethod(sourceName, BindingFlags.Static | BindingFlags.NonPublic);
+            if (pi.SourceMethod == null) pi.SourceMethod = sourceType.GetMethod(sourceName, BindingFlags.Instance | BindingFlags.NonPublic);
             if (pi.SourceMethod == null)
             {
                 Error("Source method {0}.{1} not found", sourceType.Name, sourceName);
@@ -67,6 +68,7 @@ namespace BuildProductive
 
             pi.TargetMethod = targetType.GetMethod(targetName);
             if (pi.TargetMethod == null) pi.TargetMethod = targetType.GetMethod(targetName, BindingFlags.Static | BindingFlags.NonPublic);
+            if (pi.TargetMethod == null) pi.TargetMethod = targetType.GetMethod(targetName, BindingFlags.Instance | BindingFlags.NonPublic);
             if (pi.TargetMethod == null)
             {
                 Error("Target method {0}.{1} not found", targetType.Name, targetName);
