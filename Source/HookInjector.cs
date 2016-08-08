@@ -1,29 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Reflection;
-using System.Runtime.InteropServices;
-using UnityEngine;
 using Verse;
 
 namespace BuildProductive
 {
-    public class HookInjector : MonoBehaviour
+    public class HookInjector
     {
         public struct PatchInfo
         {
+            public Type SourceType;
+            public Type TargetType;
+
             public MethodInfo SourceMethod;
             public MethodInfo TargetMethod;
 
-            public bool Is64;
+            public int TargetSize;
 
-            public int SourceAddress32;
-            public int TargetAddress32;
-            public int HookAddress32;
-
-            public long SourceAddress64;
-            public long TargetAddress64;
-            public long HookAddress64;
+            public IntPtr SourcePtr;
+            public IntPtr TargetPtr;
         }
 
         private static readonly string MessagePrefix = "HookInjector: ";
@@ -31,10 +26,9 @@ namespace BuildProductive
         private List<PatchInfo> _patches = new List<PatchInfo>();
 
         private IntPtr _memPtr;
-        private uint _memSize;
-        private int _offset;
+        private long _offset;
 
-        private MethodSizeHelper _methodSizeHelper;
+        private bool _isInitialized;
 
         public HookInjector()
         {
@@ -43,12 +37,13 @@ namespace BuildProductive
             if (_memPtr == IntPtr.Zero)
             {
                 Error("No memory allocated, injector disabled.");
+                return;
             }
 
-            _memSize = Platform.PageSize;
-
-            _methodSizeHelper = new MethodSizeHelper();
-
+            // The reason is doing it after CCL does it
+            LongEventHandler.QueueLongEvent(PatchAll, "HookInjector_PatchAll", false, null);
+            
+            /*
             var p1 = typeof(Command).GetMethod("ProcessInput").MethodHandle.GetFunctionPointer().ToInt64();
             var p2 = typeof(Command).GetMethod("get_IconDrawColor", BindingFlags.Instance | BindingFlags.NonPublic).MethodHandle.GetFunctionPointer().ToInt64();
             var p3 = typeof(GizmoGridDrawer).GetMethod("DrawGizmoGrid", BindingFlags.Static | BindingFlags.Public).MethodHandle.GetFunctionPointer().ToInt64();
@@ -56,18 +51,26 @@ namespace BuildProductive
             var p5 = Bootstrapper.InspectGizmoGrid.GetMethod("DrawInspectGizmoGridFor", BindingFlags.Static | BindingFlags.Public).MethodHandle.GetFunctionPointer().ToInt64();
 
             Message("ProcessInput: {0:X}, IconDrawColor: {1:X}, DrawGizmoGrid: {2:X}, DoAllPostLoadInits: {3:X}, DrawInspectGizmoGridFor: {4:X}", p1, p2, p3, p4, p5);
-
+            */
         }
 
-        public void AddPatch(Type sourceType, string sourceName, Type targetType, string targetName)
+        public void Inject(Type sourceType, string sourceName, Type targetType, string targetName = "")
         {
+            if (targetName.Length < 1)
+            {
+                targetName = sourceType.Name + "_" + sourceName;
+            }
+
             var pi = new PatchInfo();
+
+            pi.SourceType = sourceType;
+            pi.TargetType = targetType;
 
             pi.SourceMethod = sourceType.GetMethod(sourceName);
             if (pi.SourceMethod == null) pi.SourceMethod = sourceType.GetMethod(sourceName, BindingFlags.Static | BindingFlags.NonPublic);
             if (pi.SourceMethod == null)
             {
-                Error("Source method not found");
+                Error("Source method {0}.{1} not found", sourceType.Name, sourceName);
                 return;
             }
 
@@ -75,352 +78,92 @@ namespace BuildProductive
             if (pi.TargetMethod == null) pi.TargetMethod = targetType.GetMethod(targetName, BindingFlags.Static | BindingFlags.NonPublic);
             if (pi.TargetMethod == null)
             {
-                Error("Target method not found");
+                Error("Target method {0}.{1} not found", targetType.Name, targetName);
                 return;
             }
 
-            var sourcePtr = pi.SourceMethod.MethodHandle.GetFunctionPointer();
-            var targetPtr = pi.TargetMethod.MethodHandle.GetFunctionPointer();
+            pi.SourcePtr = pi.SourceMethod.MethodHandle.GetFunctionPointer();
+            pi.TargetPtr = pi.TargetMethod.MethodHandle.GetFunctionPointer();
 
-            pi.Is64 = IntPtr.Size == 8;
+            pi.TargetSize = Platform.GetJitMethodSize(pi.TargetPtr);
 
-            if (pi.Is64)
+            if (_isInitialized) Patch(pi);
+            else _patches.Add(pi);
+        }
+
+        void PatchAll()
+        {
+            foreach(var pi in _patches) Patch(pi);
+            _patches.Clear();
+            _isInitialized = true;
+        }
+
+        private bool Patch(PatchInfo pi)
+        {
+            var hookPtr = new IntPtr(_memPtr.ToInt64() + _offset);
+
+            Message("Patching via hook @ {0:X}:", hookPtr.ToInt64());
+            Log.Message(String.Format("    Source: {0}.{1} @ {2:X}", pi.SourceType.Name, pi.SourceMethod.Name, pi.SourcePtr.ToInt64()));
+            Log.Message(String.Format("    Target: {0}.{1} @ {2:X}", pi.TargetType.Name, pi.TargetMethod.Name, pi.TargetPtr.ToInt64()));
+
+            var s = new AsmHelper(hookPtr);
+
+            // Main proc
+            s.WriteJmp(pi.TargetPtr);
+            var mainPtr = s.ToIntPtr();
+
+            // Copy source proc stack alloc instructions
+            var src = new AsmHelper(pi.SourcePtr);
+
+            var isAlreadyPatched = false;
+            var jmpLoc = src.PeekJmp();
+            if (jmpLoc != 0)
             {
-                pi.SourceAddress64 = sourcePtr.ToInt64();
-                pi.TargetAddress64 = targetPtr.ToInt64();
-                pi.HookAddress64 = _memPtr.ToInt64() + _offset;
+                Warning("Method already patched, rerouting.");
+                pi.SourcePtr = new IntPtr(jmpLoc);
+                isAlreadyPatched = true;
+            }
+
+            var startAddress = pi.TargetPtr.ToInt64();
+            var endAddress = startAddress + pi.TargetSize;
+
+            s.WriteMovImmRax(startAddress);
+            s.WriteCmpRaxRsp();
+            s.WriteJl8(hookPtr);
+
+            s.WriteMovImmRax(endAddress);
+            s.WriteCmpRaxRsp();
+            s.WriteJg8(hookPtr);
+
+            if (isAlreadyPatched)
+            {
+                src.WriteJmp(mainPtr);
+                s.WriteJmp(pi.SourcePtr);
             }
             else
             {
-                pi.SourceAddress32 = sourcePtr.ToInt32();
-                pi.TargetAddress32 = targetPtr.ToInt32();
-                pi.HookAddress32 = _memPtr.ToInt32() + _offset;
-            }
+                var stackAlloc = src.PeekStackAlloc();
 
-            _patches.Add(pi);
-            Message("MethodCallPatcher: Patching {0}.{1} with {2}.{3}.", sourceType.Name, pi.SourceMethod.Name, targetType.Name, pi.TargetMethod.Name);
-
-            if (pi.Is64) InjectHook64(pi);
-            else InjectHook32(pi);
-        }
-
-        private unsafe bool InjectHook64(PatchInfo pi)
-        {
-            Message("Source: {0:X}, Target: {1:X}, Hook: {2:X}", pi.SourceAddress64, pi.TargetAddress64, pi.HookAddress64);
-            
-            var endAddress = FindEndAddress64(pi.TargetAddress64);
-            if (endAddress == 0) return false;
-
-            var stackAlloc = CopyStackAlloc(pi.SourceAddress64);
-
-            if (stackAlloc.Length < 5)
-            {
-                Error("Stack alloc too small to be patched.");
-                return false;
-            }
-
-            if (!WriteHookJump(pi.SourceAddress64, pi.HookAddress64, stackAlloc.Length)) return false;
-
-            WriteProc64(pi, endAddress, stackAlloc);
-
-            Message("Successfully patched.");
-            return true;
-        }
-
-        private bool InjectHook32(PatchInfo pi)
-        {
-            Message("Source: {0:X}, Target: {1:X}, Hook: {2:X}", pi.SourceAddress32, pi.TargetAddress32, pi.HookAddress32);
-
-            var length = _methodSizeHelper.GetMethodSize(pi.TargetAddress32);
-
-            if (length == 0)
-            {
-                Log.Error("Method length not found.");
-                return false;
-            }
-
-           var endAddress = pi.TargetAddress32 + length;
-           //var endAddress = FindEndAddress32(pi.TargetAddress32);
-           //if (endAddress == 0) return false;
-
-           var stackAlloc = CopyStackAlloc(pi.SourceAddress32);
-
-           if (stackAlloc.Length < 5)
-           {
-                Error("Stack alloc too small to be patched.");
-                return false;
-           }
-
-           //if (!WriteHookJump(pi.SourceAddress32, pi.HookAddress32, stackAlloc.Length))
-           //     return false;
-
-           WriteProc32(pi, endAddress, stackAlloc);
-
-           Message("Successfully patched.");
-           return true;
-        }
-
-        private unsafe long FindEndAddress64(long procAddress)
-        {
-            var p = (byte*)procAddress;
-
-            uint headerHi = 0xEC8B4855; // pushq %rbp; movq %rsp, %rbp
-            var isHeaderStatic = false;
-
-            byte subq8 = 0;
-            uint subq32 = 0;
-            var isSubq32 = false;
-
-            long retPos = 0;
-            var zeroCount = 0;
-            var retSearchLimit = 60;
-
-            var dw = (uint*)p;
-
-            if (*dw == headerHi)
-            {
-                Error("Instance headers are untested and disabled, please report.");
-                return 0;
-
-                p += 4;
-            }
-            // subq $imm8, %rsp
-            else if (p[0] == 0x48 && p[1] == 0x83 && p[2] == 0xEC)
-            {
-                Message("Found subq imm8");
-                isHeaderStatic = true;
-
-                subq8 = p[3];
-
-                p += 4;
-            }
-            // subq $imm32, %rsp
-            else if (p[0] == 0x48 && p[1] == 0x81 && p[2] == 0xEC)
-            {
-                Message("Found subq imm32");
-                isHeaderStatic = true;
-
-                dw = (uint*)(p + 3);
-                subq32 = *dw;
-                isSubq32 = true;
-
-                p += 7;
-            }
-            else
-            {
-                Error("Unsupported method header.");
-                return 0;
-            }
-
-            try
-            {
-                while (true)
+                if (stackAlloc.Length < 5)
                 {
-                    if (isHeaderStatic)
-                    {
-                        if (isSubq32)
-                        {
-                            dw = (uint*)(p + 3);
-                            if (p[0] == 0x48 && p[1] == 0x81 && p[2] == 0xC4 && *dw == subq32 && p[7] == 0xC3)
-                            {
-                                Message("Found addq imm32.");
-                                retPos = (long)(p + 7);
-                                break;
-                            }
-                        }
-                        else
-                        {
-                            if (p[0] == 0x48 && p[1] == 0x83 && p[2] == 0xC4 && p[3] == subq8 && p[4] == 0xC3)
-                            {
-                                Message("Found addq imm8.");
-                                retPos = (long)(p + 4);
-                                break;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (p[0] == 0xC9 && p[1] == 0xC3)
-                        {
-                            Message("Return found.");
-                            zeroCount = 0;
-                            retPos = (long)p + 1;
-                            p += 2;
-                            continue;
-                        }
-
-                        if (retPos > 0)
-                        {
-                            if ((long)(p - retPos) > retSearchLimit)
-                            {
-                                Error("Hit search limit.");
-                                retPos = 0;
-                                break;
-                            }
-
-                            if (p[0] == 0)
-                            {
-                                zeroCount++;
-                                if (zeroCount > 7)
-                                {
-                                    Message("Zeroes found.");
-                                    break;
-                                }
-                            }
-                            else
-                            {
-                                zeroCount = 0;
-
-                                dw = (uint*)p;
-                                if (*dw == headerHi)
-                                {
-                                    Message("Next proc header found.");
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    p++;
+                    Error("Stack alloc too small to be patched, aborting.");
+                    return false;
                 }
+                s.Write(stackAlloc);
+                s.WriteJmp(new IntPtr(pi.SourcePtr.ToInt64() + stackAlloc.Length));
+
+                // Write jump to main proc in source proc
+                src.WriteJmpRel32(mainPtr);
+                var srcOffset = (int)(src.ToInt64() - pi.SourcePtr.ToInt64());
+                src.WriteNop(stackAlloc.Length - srcOffset);
             }
-            catch (NullReferenceException)
-            {
-                Message("Unallocated memory reached.");
-            }
-
-            if (retPos > 0)
-            {
-                var end = retPos + 1;
-                Message("Method length: " + (end - procAddress));
-                return end;
-            }
-            else
-            {
-                Error("Method length not found.");
-            }
-
-            return 0;
-        }
-
-        private unsafe byte[] CopyStackAlloc(long procAddress)
-        {
-            var p = (byte*)procAddress;
-
-            var i = 0;
-            // look for sub esp, $ or subq $, %rsp
-            while (true)
-            {
-                if (p[i] == 0x83 && p[i + 1] == 0xEC)
-                {
-                    i += 2;
-                    break;
-                }
-                else if (p[i] == 0x81 && p[i + 1] == 0xEC)
-                {
-                    i += 5;
-                    break;
-                }
-
-                i++;
-            }
-
-            var bytes = new byte[i + 1];
-            Marshal.Copy(new IntPtr(procAddress), bytes, 0, i + 1);
-
-            return bytes;
-        }
-
-        private unsafe bool WriteHookJump(long procAddress, long hookAddress, int stackAllocSize = 0)
-        {
-            var p = (byte*)procAddress;
-
-            int targetAddress = 0;
-
-            try
-            {
-                targetAddress = Convert.ToInt32(hookAddress - procAddress - 5);
-            }
-            catch (OverflowException)
-            {
-                Error("The methods are too far apart to be encoded in rel32.");
-                return false;
-            }
-
-            *p = 0xE9;
-            var dw = (int*)(p + 1);
-            *dw = targetAddress;
-
-            if (stackAllocSize > 0)
-            {
-                for (var i = 5; i < stackAllocSize; i++)
-                {
-                    p[i] = 0x90;
-                }
-            }
-
-            return true;
-        }
-
-        private unsafe void WriteProc32(PatchInfo pi, int endAddress, byte[] stackAlloc)
-        {
-            var s = new AsmStream(pi.HookAddress32);
-
-            s.WriteJmp(pi.TargetAddress32);
-            var mainAddr = s.ToInt64();
-
-            s.WriteMovXaxImm(pi.TargetAddress32);
-            s.WriteCmpXspXax();
-            s.WriteJl8(pi.HookAddress32);
-
-            s.WriteMovXaxImm(endAddress);
-            s.WriteCmpXspXax();
-            s.WriteJg8(pi.HookAddress32);
-
-            s.Write(stackAlloc);
-            s.WriteJmp(pi.SourceAddress32 + stackAlloc.Length);
 
             s.WriteLong(0);
 
-            _offset = Convert.ToInt32(s.ToInt64() - _memPtr.ToInt64());
+            _offset = s.ToInt64() - _memPtr.ToInt64();
 
-            s = new AsmStream(pi.SourceAddress32);
-            s.WriteJmpRel32(mainAddr);
-            s.WriteNop(stackAlloc.Length -  ((int)s - pi.SourceAddress32));
-        }
-
-        private unsafe void WriteProc64(PatchInfo pi, long endAddress, byte[] stackAlloc)
-        {
-            using (var w = new BinaryWriter(new UnmanagedMemoryStream(
-                (byte*)pi.HookAddress64, _memSize - _offset, _memSize - _offset, FileAccess.Write)))
-            {
-                w.Write(new byte[] { 0x48, 0xB8 }); // movabsq $, %rax
-                w.Write(pi.TargetAddress64);
-                w.Write(new byte[] { 0x48, 0x39, 0x04, 0x24 }); // cmpq %rax, (%rsp)
-                w.Write(new byte[] { 0x7C, 0x12 }); // jl hook
-
-                w.Write(new byte[] { 0x48, 0xB8 }); // movabsq $, %rax
-                w.Write(endAddress);
-                w.Write(new byte[] { 0x48, 0x39, 0x04, 0x24 }); // cmpq %rax, (%rsp)
-                w.Write(new byte[] { 0x7F, 0x02 }); // jg hook
-                w.Write(new byte[] { 0xEB, 0x0C }); // jmp stackAlloc
-
-                // hook:
-                w.Write(new byte[] { 0x48, 0xB8 }); // movabsq $, %rax
-                w.Write(pi.TargetAddress64);
-                w.Write(new byte[] { 0xFF, 0xE0 }); // jmpq *%rax
-
-                // stackAlloc:
-                w.Write(stackAlloc);
-                w.Write(new byte[] { 0x48, 0xB8 }); // movabsq $, %rax
-                w.Write(pi.SourceAddress64 + stackAlloc.Length);
-                w.Write(new byte[] { 0xFF, 0xE0 }); // jmpq *%rax
-
-                w.Write(0);
-                w.Write(0);
-
-                _offset += (int)w.BaseStream.Position;
-            }
+            Message("Successfully patched.");
+            return true;
         }
 
         private void Message(string message)

@@ -17,7 +17,6 @@ namespace BuildProductive
         public static Designator_BuildCopy CopyDesignator;
         public static BuildingWatchdog Watchdog;
 
-		public static MethodCallPatcher Patcher;
 		public static GameObject PatcherContainer;
 
         public static HookInjector HookPatcher;
@@ -73,15 +72,16 @@ namespace BuildProductive
             */
             if (InjectTestPatcher && HookPatcherContainer == null)
                 {
+                /*
                 HookPatcherContainer = new GameObject();
                 GameObject.DontDestroyOnLoad(HookPatcherContainer);
                 HookPatcher = HookPatcherContainer.AddComponent<HookInjector>();
+                */
 
-                HookPatcher.AddPatch(typeof(PostLoadInitter), "DoAllPostLoadInits",
-                                 typeof(VerseExtensions), "PostLoadInitted_DoAllPostLoadInits");
-
-                HookPatcher.AddPatch(typeof(GizmoGridDrawer), "DrawGizmoGrid",
-                                typeof(VerseExtensions), "GizmoGridDrawer_DrawGizmoGrid");
+                HookPatcher = new HookInjector();
+                HookPatcher.Inject(typeof(PreLoadUtility), "CheckVersionAndLoad", typeof(VerseExtensions));
+                HookPatcher.Inject(typeof(PostLoadInitter), "DoAllPostLoadInits", typeof(VerseExtensions));
+                HookPatcher.Inject(typeof(GizmoGridDrawer), "DrawGizmoGrid", typeof(VerseExtensions));
             }
 
             /*

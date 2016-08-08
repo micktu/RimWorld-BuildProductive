@@ -14,17 +14,26 @@ namespace BuildProductive
             get { return _pageSize; }
         }
 
+        public static bool IsUnix
+        {
+            get
+            {
+                int p = (int)Environment.OSVersion.Platform;
+                return p == 4 || p == 6 || p == 128;
+            }
+        }
+
         public static IntPtr AllocRWE()
         {
             IntPtr ptr;
 
-            if (IntPtr.Size == 8)
+            if (IsUnix)
             {
                 long addr;
-                _pageSize = (uint)Platform.getpagesize();
+                _pageSize = (uint)getpagesize();
 
-                Platform.posix_memalign(out addr, _pageSize, _pageSize);
-                var result = Platform.mprotect(addr, _pageSize, 0x7);
+                posix_memalign(out addr, _pageSize, _pageSize);
+                var result = mprotect(addr, _pageSize, 0x7);
 
                 if (result != 0)
                 {
@@ -33,7 +42,6 @@ namespace BuildProductive
                 }
 
                 ptr = new IntPtr(addr);
-                Log.Message(string.Format("Allocated {0} bytes at 0x{1:X}.", _pageSize, addr));
             }
             else
             {
@@ -42,10 +50,54 @@ namespace BuildProductive
                 _pageSize = si.PageSize;
 
                 ptr = Platform.VirtualAllocEx(Process.GetCurrentProcess().Handle, IntPtr.Zero, _pageSize, AllocationType.Commit, MemoryProtection.ExecuteReadWrite);
-                Log.Message(string.Format("Allocated {0} bytes at 0x{1:X}.", _pageSize, (uint)ptr));
+
+                if (ptr == IntPtr.Zero)
+                {
+                    Log.Error(string.Format("VirtualAllocEx() failed (error {0}))", Marshal.GetLastWin32Error()));
+                    return IntPtr.Zero;
+                }
+
             }
 
+            Log.Message(string.Format("Allocated {0} bytes at 0x{1:X}.", _pageSize, ptr.ToInt64()));
+
             return ptr;
+        }
+
+        public static int GetJitMethodSize(IntPtr ptr)
+        {
+            var infoPtr = mono_jit_info_table_find(mono_domain_get(), ptr);
+            if (infoPtr == IntPtr.Zero)
+            {
+                Log.Error("Failed to obtain MonoJitInfo.");
+                return 0;
+            }
+
+            var info = (MonoJitInfo)Marshal.PtrToStructure(infoPtr, typeof(MonoJitInfo));
+            if (info.code_start != ptr)
+            {
+                Log.Error("Invalid MonoJitInfo.");
+                return 0;
+            }
+
+            return info.code_size;
+        }
+
+        [DllImport("__Internal")]
+        public static extern IntPtr mono_jit_info_table_find(IntPtr domain, IntPtr addr);
+
+        [DllImport("__Internal")]
+        public static extern IntPtr mono_domain_get();
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct MonoJitInfo
+        {
+            public IntPtr d;
+            public IntPtr n;
+            public IntPtr code_start;
+            public uint unwind_info;
+            public int code_size;
+            // The rest is omitted
         }
 
         [DllImport("libc")]
@@ -127,9 +179,6 @@ namespace BuildProductive
             public UInt16 ProcessorLevel;
             public UInt16 ProcessorRevision;
         }
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern bool VirtualProtect(IntPtr lpAddress, uint dwSize, MemoryProtection flNewProtect, out MemoryProtection lpflOldProtect);
     }
 }
 

@@ -33,10 +33,16 @@ namespace BuildProductive
             GizmoGridDrawer.DrawGizmoGrid(gizmos, startX, out mouseoverGizmo);
         }
 
-        internal static void PostLoadInitted_DoAllPostLoadInits()
+        internal static void PostLoadInitter_DoAllPostLoadInits()
         {
             PostLoadInitter.DoAllPostLoadInits();
             Log.Message("!!! PostLoad!");
+        }
+
+        internal static void PreLoadUtility_CheckVersionAndLoad(string path, ScribeMetaHeaderUtility.ScribeHeaderMode mode, Action loadAct)
+        {
+            Log.Message("!!! CheckVersionAndLoad");
+            PreLoadUtility.CheckVersionAndLoad(path, mode, loadAct);
         }
     }
 }
