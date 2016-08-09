@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Reflection;
 using Verse;
 using RimWorld;
@@ -10,6 +11,9 @@ namespace BuildProductive
         public static Type InspectGizmoGrid;
         public static FieldInfo StuffDefField, WriteStuffField, GizmoListField, ObjListField, WantSwitchOn, AutoRearmField, HoldFireField;
         public static MethodInfo IconDrawColor, MakeSolidThing;
+
+        public static List<Gizmo> InspectGizmoGrid_gizmoList;
+        public static List<object> InspectGizmoGrid_objList;
 
         public static void Resolve()
 

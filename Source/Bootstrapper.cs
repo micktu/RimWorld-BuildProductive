@@ -9,11 +9,13 @@ namespace BuildProductive
     {
         static Bootstrapper()
         {
+            Globals.Logger = new Logger { MessagePrefix = "BuildProductive: ", Verbosity = Logger.Level.Info };
+
             Privates.Resolve();
 
             if (Globals.Injector != null)
             {
-                Log.Error("Injector already initialized.");
+                Globals.Logger.Error("Injector already initialized.");
                 return;
             }
 
@@ -25,6 +27,7 @@ namespace BuildProductive
 
             // Command-related hooks
             injector.Inject(typeof(Command), "get_IconDrawColor", typeof(VerseExtensions));
+            injector.Inject(typeof(GizmoGridDrawer), "DrawGizmoGrid", typeof(VerseExtensions));
 
             // Designator-related hooks
             injector.Inject(typeof(GenConstruct), "PlaceBlueprintForBuild", typeof(VerseExtensions));
@@ -32,6 +35,8 @@ namespace BuildProductive
             injector.Inject(typeof(Frame), "CompleteConstruction", typeof(VerseExtensions));
             injector.Inject(typeof(Frame), "FailConstruction", typeof(VerseExtensions));
             injector.Inject(typeof(Designator_Cancel), "DesignateThing", typeof(VerseExtensions));
+
+            Globals.Logger.Info("Bootstrapped.");
         }
     }
 }

@@ -22,7 +22,7 @@ namespace BuildProductive.Injection
             public IntPtr TargetPtr;
         }
 
-        private static readonly string MessagePrefix = "HookInjector: ";
+        private Logger _logger = new Logger { MessagePrefix = "HookInjector: ", Verbosity = Logger.Level.Info };
 
         private List<PatchInfo> _patches = new List<PatchInfo>();
 
@@ -37,7 +37,7 @@ namespace BuildProductive.Injection
 
             if (_memPtr == IntPtr.Zero)
             {
-                Error("No memory allocated, injector disabled.");
+                _logger.Error("No memory allocated, injector disabled.");
                 return;
             }
 
@@ -62,7 +62,7 @@ namespace BuildProductive.Injection
             if (pi.SourceMethod == null) pi.SourceMethod = sourceType.GetMethod(sourceName, BindingFlags.Instance | BindingFlags.NonPublic);
             if (pi.SourceMethod == null)
             {
-                Error("Source method {0}.{1} not found", sourceType.Name, sourceName);
+                _logger.Error("Source method {0}.{1} not found", sourceType.Name, sourceName);
                 return;
             }
 
@@ -71,7 +71,7 @@ namespace BuildProductive.Injection
             if (pi.TargetMethod == null) pi.TargetMethod = targetType.GetMethod(targetName, BindingFlags.Instance | BindingFlags.NonPublic);
             if (pi.TargetMethod == null)
             {
-                Error("Target method {0}.{1} not found", targetType.Name, targetName);
+                _logger.Error("Target method {0}.{1} not found", targetType.Name, targetName);
                 return;
             }
 
@@ -88,15 +88,16 @@ namespace BuildProductive.Injection
         {
             foreach(var pi in _patches) Patch(pi);
             _isInitialized = true;
+            _logger.Info("Processed {0} methods.", _patches.Count);
         }
 
         private bool Patch(PatchInfo pi)
         {
             var hookPtr = new IntPtr(_memPtr.ToInt64() + _offset);
 
-            Message("Patching via hook @ {0:X}:", hookPtr.ToInt64());
-            Log.Message(String.Format("    Source: {0}.{1} @ {2:X}", pi.SourceType.Name, pi.SourceMethod.Name, pi.SourcePtr.ToInt64()));
-            Log.Message(String.Format("    Target: {0}.{1} @ {2:X}", pi.TargetType.Name, pi.TargetMethod.Name, pi.TargetPtr.ToInt64()));
+            _logger.Debug("Patching via hook @ {0:X}:", hookPtr.ToInt64());
+            _logger.Debug("    Source: {0}.{1} @ {2:X}", pi.SourceType.Name, pi.SourceMethod.Name, pi.SourcePtr.ToInt64());
+            _logger.Debug("    Target: {0}.{1} @ {2:X}", pi.TargetType.Name, pi.TargetMethod.Name, pi.TargetPtr.ToInt64());
 
             var s = new AsmHelper(hookPtr);
 
@@ -111,7 +112,7 @@ namespace BuildProductive.Injection
             var jmpLoc = src.PeekJmp();
             if (jmpLoc != 0)
             {
-                Warning("Method already patched, rerouting.");
+                _logger.Debug("    Method already patched, rerouting.");
                 pi.SourcePtr = new IntPtr(jmpLoc);
                 isAlreadyPatched = true;
             }
@@ -140,7 +141,7 @@ namespace BuildProductive.Injection
 
                 if (stackAlloc.Length < 5)
                 {
-                    Warning("Stack alloc too small to be patched, attempting full copy.");
+                    _logger.Debug("    Stack alloc too small to be patched, attempting full copy.");
 
                     var size = (Platform.GetJitMethodSize(pi.SourcePtr));
                     var bytes = new byte[size];
@@ -168,38 +169,8 @@ namespace BuildProductive.Injection
 
             _offset = s.ToInt64() - _memPtr.ToInt64();
 
-            Message("Successfully patched.");
+            _logger.Debug("    Successfully patched.");
             return true;
-        }
-
-        private void Message(string message)
-        {
-            Log.Message(MessagePrefix + message);
-        }
-
-        private void Message(string message, params object[] args)
-        {
-            Log.Message(String.Format(MessagePrefix + message, args));
-        }
-
-        private void Warning(string message)
-        {
-            Log.Warning(MessagePrefix + message);
-        }
-
-        private void Warning(string message, params object[] args)
-        {
-            Log.Warning(String.Format(MessagePrefix + message, args));
-        }
-
-        private void Error(string message)
-        {
-            Log.Error(MessagePrefix + message);
-        }
-
-        private void Error(string message, params object[] args)
-        {
-            Log.Error(String.Format(MessagePrefix + message, args));
         }
     }
 }

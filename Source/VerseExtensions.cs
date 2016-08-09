@@ -1,5 +1,4 @@
 ﻿using RimWorld;
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Verse;
@@ -23,26 +22,40 @@ namespace BuildProductive
 
         internal static void GizmoGridDrawer_DrawGizmoGrid(IEnumerable<Gizmo> gizmos, float startX, out Gizmo mouseoverGizmo)
         {
-            Command_Action command_Action = new Command_Action();
-            command_Action.defaultLabel = "Test Icon";
-            command_Action.action = delegate
-            {
-            };
-            (gizmos as List<Gizmo>).Add(command_Action);
+            var gizmoList = Privates.InspectGizmoGrid_gizmoList;
 
+            // gizmos are actually null for main tab
+            if (gizmos != null && gizmos == gizmoList)
+            {
+                /*
+                var objList = Privates.InspectGizmoGrid_objList;
+                var des = Globals.CopyDesignator;
+
+                foreach (var o in objList)
+                {
+                    var thing = o as Thing;
+                    if (thing == null) continue;
+                    if (des.CanDesignateThing(thing).Accepted)
+                    {
+                        gizmoList.Add(Globals.CopyDesignator);
+                    }
+                }
+                */
+            }
+            
             GizmoGridDrawer.DrawGizmoGrid(gizmos, startX, out mouseoverGizmo);
         }
 
         internal static Blueprint_Build GenConstruct_PlaceBlueprintForBuild(BuildableDef sourceDef, IntVec3 center, Rot4 rotation, Faction faction, ThingDef stuff)
         {
+            var des = Globals.CopyDesignator;
             var blueprint = GenConstruct.PlaceBlueprintForBuild(sourceDef, center, rotation, faction, stuff);
 
-            var des = Globals.CopyDesignator;
-
-            if (blueprint.def.entityDefToBuild == des.LastBuilding.def && des.CurrentCell == center)
+            if (des.LastBuilding != null && des.PlacingDef == sourceDef && des.CurrentCell == center)
             {
                 des.Keeper.RegisterBlueprint(des.LastBuilding, blueprint);
             }
+
             return blueprint;
         }
 

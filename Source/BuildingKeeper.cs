@@ -29,7 +29,7 @@ namespace BuildProductive
             if (WrapInfo(building, out bi))
             {
                 _blueprints[blueprint.thingIDNumber] = bi;
-                Log.Message("Registered blueprint " + blueprint.thingIDNumber + " for building " + building.thingIDNumber);
+                Globals.Logger.Debug("Registered blueprint " + blueprint.thingIDNumber + " for building " + building.thingIDNumber);
             }
         }
 
@@ -42,7 +42,7 @@ namespace BuildProductive
             {
                 _blueprints[blueprint.thingIDNumber] = bi;
                 _frames.Remove(id);
-                Log.Message("Transferred from frame " + id + " to blueprint " + blueprint.thingIDNumber);
+                Globals.Logger.Debug("Transferred from frame " + id + " to blueprint " + blueprint.thingIDNumber);
             }
         }
 
@@ -50,7 +50,7 @@ namespace BuildProductive
         {
             if (_blueprints.Remove(blueprint.thingIDNumber))
             {
-                Log.Message("Unregistered blueprint " + blueprint.thingIDNumber);
+                Globals.Logger.Debug("Unregistered blueprint " + blueprint.thingIDNumber);
             }
         }
 
@@ -63,7 +63,7 @@ namespace BuildProductive
             {
                 _frames[frame.thingIDNumber] = bi;
                 _blueprints.Remove(id);
-                Log.Message("Transferred from blueprint " + id + " to frame " + frame.thingIDNumber);
+                Globals.Logger.Debug("Transferred from blueprint " + id + " to frame " + frame.thingIDNumber);
             }
         }
 
@@ -71,7 +71,7 @@ namespace BuildProductive
         {
             if (_frames.Remove(frame.thingIDNumber))
             {
-                Log.Message("Unregistered frame " + frame.thingIDNumber);
+                Globals.Logger.Debug("Unregistered frame " + frame.thingIDNumber);
             }
         }
 
@@ -84,7 +84,7 @@ namespace BuildProductive
             {
                 UnwrapInfo(building, bi);
                 _frames.Remove(id);
-                Log.Message("Transferred from frame " + id + " to building " + building.thingIDNumber);
+                Globals.Logger.Debug("Transferred from frame " + id + " to building " + building.thingIDNumber);
             }
         }
 
@@ -94,7 +94,7 @@ namespace BuildProductive
             if (WrapInfo(source, out bi))
             {
                 UnwrapInfo(destination, bi);
-                Log.Message("Transferred from building " + source.thingIDNumber + " to building " + destination.thingIDNumber);
+                Globals.Logger.Debug("Transferred from building " + source.thingIDNumber + " to building " + destination.thingIDNumber);
             }
         }
 

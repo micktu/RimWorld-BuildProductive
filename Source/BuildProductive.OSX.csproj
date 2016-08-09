@@ -44,10 +44,6 @@
       <HintPath>$(HOME)/Library/Application Support/Steam/steamapps/common/RimWorld/RimWorldMac.app/Contents/Resources/Data/Managed/Assembly-CSharp.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Community Core Library">
-      <HintPath>$(HOME)/Library/Application Support/Steam/steamapps/workshop/content/294100/729577707/Assemblies/Community Core Library.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="UnityEngine">
       <HintPath>$(HOME)/Library/Application Support/Steam/steamapps/common/RimWorld/RimWorldMac.app/Contents/Resources/Data/Managed/UnityEngine.dll</HintPath>
@@ -66,6 +62,7 @@
     <Compile Include="Injection\Platform.cs" />
     <Compile Include="Privates.cs" />
     <Compile Include="Globals.cs" />
+    <Compile Include="Logger.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Injection\" />

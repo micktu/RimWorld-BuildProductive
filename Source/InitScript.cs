@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
 using Verse;
 
 namespace BuildProductive
@@ -16,9 +17,14 @@ namespace BuildProductive
 
         void Start()
         {
+            Privates.InspectGizmoGrid_gizmoList = Privates.GizmoListField.GetValue(Privates.InspectGizmoGrid) as List<Gizmo>;
+            Privates.InspectGizmoGrid_objList = Privates.ObjListField.GetValue(Privates.InspectGizmoGrid) as List<object>;
+
             var des = new Designator_BuildCopy();
             Globals.CopyDesignator = des;
             ReverseDesignatorDatabase.AllDesignators.Add(des);
+
+            Globals.Logger.Info("Post-load initialized.");
 
             Destroy(gameObject);
         }
