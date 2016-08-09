@@ -8,9 +8,13 @@ namespace BuildProductive
     {
         public static readonly ThingDef PlaceholderDef = DefDatabase<ThingDef>.GetNamed("Wall");
 
-        private Building _building;
+        public Building LastBuilding { get; private set; }
 
-        private Rot4 buildingRot;
+        public IntVec3 CurrentCell { get; private set; }
+
+        public BuildingKeeper Keeper { get; private set; }
+
+        private Rot4 _buildingRot;
 
         public Designator_BuildCopy() : base(PlaceholderDef)
         {
@@ -20,6 +24,8 @@ namespace BuildProductive
             hotKey = KeyBindingDefOf.Misc8;
 
             WriteStuff = true;
+
+            Keeper = new BuildingKeeper();
         }
 
         // FIXME If IconDrawColor ever becomes public
@@ -42,6 +48,10 @@ namespace BuildProductive
             {
                 Bootstrapper.StuffDefField.SetValue(this, value);
             }
+            get
+            {
+                return Bootstrapper.StuffDefField.GetValue(this) as ThingDef;
+            }
         }
 
         protected bool WriteStuff
@@ -61,11 +71,18 @@ namespace BuildProductive
         {
             soundSucceeded = SoundDefOf.DesignatePlaceBuilding;
 
+            CurrentCell = c;
             base.DesignateSingleCell(c);
-
-            if (_building != null)
+            
+            if (DebugSettings.godMode || entDef.GetStatValueAbstract(StatDefOf.WorkToMake, StuffDef) == 0f)
             {
-                Bootstrapper.Watchdog.TryAddBuilding(c, _building);
+                var building = Find.ThingGrid.ThingAt<Building>(c);
+                BuildingKeeper.BuildingInfo bi;
+
+                if (Keeper.WrapInfo(LastBuilding, out bi))
+                {
+                    Keeper.UnwrapInfo(building, bi);
+                }
             }
         }
 
@@ -113,7 +130,7 @@ namespace BuildProductive
                 iconDrawScale = 1f;
             }
 
-            buildingRot = thing.Rotation;
+            _buildingRot = thing.Rotation;
 
             soundSucceeded = activateSound;
 
@@ -123,10 +140,10 @@ namespace BuildProductive
         public override void DesignateThing(Thing t)
         {
             DesignatorManager.Select(this);
-            placingRot = buildingRot;
+            placingRot = _buildingRot;
 
-            _building = t as Building;
-            if (_building is Frame) _building = null;
+            LastBuilding = t as Building;
+            if (LastBuilding is Frame) LastBuilding = null;
         }
     }
 }

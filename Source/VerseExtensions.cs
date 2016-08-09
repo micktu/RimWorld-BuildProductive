@@ -33,12 +33,6 @@ namespace BuildProductive
             GizmoGridDrawer.DrawGizmoGrid(gizmos, startX, out mouseoverGizmo);
         }
 
-        internal static void PostLoadInitter_DoAllPostLoadInits()
-        {
-            PostLoadInitter.DoAllPostLoadInits();
-            Log.Message("!!! PostLoad!");
-        }
-
         internal static void PreLoadUtility_CheckVersionAndLoad(string path, ScribeMetaHeaderUtility.ScribeHeaderMode mode, Action loadAct)
         {
             Log.Message("!!! CheckVersionAndLoad");
@@ -49,6 +43,63 @@ namespace BuildProductive
         {
             Log.Message("SetFaction");
             building.SetFaction(newFaction, recruiter);
+        }
+
+        internal static Blueprint_Build GenConstruct_PlaceBlueprintForBuild(BuildableDef sourceDef, IntVec3 center, Rot4 rotation, Faction faction, ThingDef stuff)
+        {
+            var blueprint = GenConstruct.PlaceBlueprintForBuild(sourceDef, center, rotation, faction, stuff);
+
+            var des = Bootstrapper.CopyDesignator;
+
+            if (blueprint.def.entityDefToBuild == des.LastBuilding.def && des.CurrentCell == center)
+            {
+                des.Keeper.RegisterBlueprint(des.LastBuilding, blueprint);
+            }
+            return blueprint;
+        }
+
+        internal static Thing Blueprint_Build_MakeSolidThing(this Blueprint_Build blueprint)
+        {
+            // FIXME should Invoke when the injector will be able to take care of that
+            var thing = ThingMaker.MakeThing(blueprint.def.entityDefToBuild.frameDef, blueprint.stuffToUse);
+            Bootstrapper.CopyDesignator.Keeper.RegisterFrame(blueprint, thing as Frame);
+            return thing;
+        }
+
+        internal static void Frame_CompleteConstruction(this Frame frame, Pawn worker)
+        {
+            var pos = frame.Position;
+            frame.CompleteConstruction(worker);
+
+            var building = Find.ThingGrid.ThingAt<Building>(pos);
+            Bootstrapper.CopyDesignator.Keeper.RegisterBuilding(frame, building);
+        }
+
+        internal static void Frame_FailConstruction(this Frame frame, Pawn worker)
+        {
+            var pos = frame.Position;
+            frame.FailConstruction(worker);
+
+            var blueprint = Find.ThingGrid.ThingAt<Blueprint_Build>(pos);
+            Bootstrapper.CopyDesignator.Keeper.RegisterBlueprint(frame, blueprint);
+        }
+
+        internal static void Designator_Cancel_DesignateThing(this Designator_Cancel des, Thing t)
+        {
+            des.DesignateThing(t);
+
+            var blueprint = t as Blueprint;
+            if (blueprint != null)
+            {
+                Bootstrapper.CopyDesignator.Keeper.UnregisterBlueprint(blueprint);
+                return;
+            }
+
+            var frame = t as Frame;
+            if (frame != null)
+            {
+                Bootstrapper.CopyDesignator.Keeper.UnregisterFrame(frame);
+            }
         }
     }
 }

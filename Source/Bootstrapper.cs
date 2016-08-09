@@ -1,33 +1,25 @@
 ﻿using System;
 using System.Reflection;
-using UnityEngine;
 using Verse;
 using RimWorld;
-using CommunityCoreLibrary;
-using CommunityCoreLibrary.Detour;
+using UnityEngine;
 
 namespace BuildProductive
 {
     [StaticConstructorOnStartup]
-    class Bootstrapper : MonoBehaviour
+    class Bootstrapper
     {
         public static Type InspectGizmoGrid;
         public static FieldInfo StuffDefField, WriteStuffField, GizmoListField, ObjListField, WantSwitchOn, AutoRearmField, HoldFireField;
+        public static MethodInfo IconDrawColor, MakeSolidThing;
+
 
         public static Designator_BuildCopy CopyDesignator;
-        public static BuildingWatchdog Watchdog;
-
-		public static GameObject PatcherContainer;
 
         public static HookInjector HookPatcher;
-        public static GameObject HookPatcherContainer;
-
-        public static readonly bool InjectTestPatcher = true;
 
         static Bootstrapper()
         {
-            Log.Message("BuildProductive has arrived.");
-
             // Designator_Build private access
             StuffDefField = GetInstancePrivateField(typeof(Designator_Build), "stuffDef");
             WriteStuffField = GetInstancePrivateField(typeof(Designator_Build), "writeStuff");
@@ -37,81 +29,28 @@ namespace BuildProductive
             //GizmoListField = GetStaticPrivateField(inspectGizmoGrid, "gizmoList");
             //ObjListField = GetStaticPrivateField(inspectGizmoGrid, "objList");
 
+            IconDrawColor = typeof(Command).GetMethod("get_IconDrawColor", BindingFlags.Instance | BindingFlags.NonPublic);
+            MakeSolidThing = typeof(Blueprint_Build).GetMethod("MakeSolidThing", BindingFlags.Instance | BindingFlags.NonPublic);
+
+            Log.Message(MakeSolidThing.Name);
+
             // Buildings and comps private access
             WantSwitchOn = GetInstancePrivateField(typeof(CompFlickable), "wantSwitchOn");
             AutoRearmField = GetInstancePrivateField(typeof(Building_TrapRearmable), "autoRearm");
             HoldFireField = GetInstancePrivateField(typeof(Building_TurretGun), "holdFire");
 
-            Log.Message("Detouring.");
-            // Hook into Command.IconDrawColor
-            /*Detour(typeof(Command), "get_IconDrawColor", BindingFlags.Instance | BindingFlags.NonPublic,
-                   typeof(VerseExtensions), "Command_get_IconDrawColor", BindingFlags.Static | BindingFlags.NonPublic);*/
-
-            /*
-            Log.Message("Initializing patcher.");
-            if (InjectTestPatcher && PatcherContainer == null)
-            {
-                PatcherContainer = new GameObject();
-                GameObject.DontDestroyOnLoad(PatcherContainer);
-                Patcher = PatcherContainer.AddComponent<MethodCallPatcher>();
-
-                var preLoadUtility = typeof(StatWorker_Extensions).Assembly.GetType("CommunityCoreLibrary.Detour._PreLoadUtility", true);
-
-                Patcher.AddPatch(preLoadUtility, "_CheckVersionAndLoad",
-                                 typeof(PostLoadInitter), "DoAllPostLoadInits",
-                                 typeof(VerseExtensions), "PostLoadInitted_DoAllPostLoadInits");
-
-                Patcher.AddPatch(typeof(PreLoadUtility), "CheckVersionAndLoad",
-                                 typeof(PostLoadInitter), "DoAllPostLoadInits",
-                                 typeof(VerseExtensions), "PostLoadInitted_DoAllPostLoadInits");
-                
-                Patcher.AddPatch(InspectGizmoGrid, "DrawInspectGizmoGridFor",
-                                 typeof(GizmoGridDrawer), "DrawGizmoGrid",
-                                 typeof(VerseExtensions), "GizmoGridDrawer_DrawGizmoGrid");
-            }
-            */
-            if (InjectTestPatcher && HookPatcherContainer == null)
-                {
-                /*
-                HookPatcherContainer = new GameObject();
-                GameObject.DontDestroyOnLoad(HookPatcherContainer);
-                HookPatcher = HookPatcherContainer.AddComponent<HookInjector>();
-                */
-
+            if (HookPatcher == null)
+            { 
                 HookPatcher = new HookInjector();
-                HookPatcher.Inject(typeof(PostLoadInitter), "DoAllPostLoadInits", typeof(VerseExtensions));
-                HookPatcher.Inject(typeof(Building), "SetFaction", typeof(VerseExtensions));
-                HookPatcher.Inject(typeof(GizmoGridDrawer), "DrawGizmoGrid", typeof(VerseExtensions));
-                HookPatcher.Inject(typeof(PreLoadUtility), "CheckVersionAndLoad", typeof(VerseExtensions));
+                //HookPatcher.Inject(typeof(PreLoadUtility), "CheckVersionAndLoad", typeof(Bootstrapper), "OnLoad");
+                HookPatcher.Inject(typeof(MapIniterUtility), "FinalizeMapInit", typeof(InitScript), "OnFinalizeMapInit");
+                HookPatcher.Inject(typeof(Command), "get_IconDrawColor", typeof(VerseExtensions));
+                HookPatcher.Inject(typeof(GenConstruct), "PlaceBlueprintForBuild", typeof(VerseExtensions));
+                HookPatcher.Inject(typeof(Blueprint_Build), "MakeSolidThing", typeof(VerseExtensions));
+                HookPatcher.Inject(typeof(Frame), "CompleteConstruction", typeof(VerseExtensions));
+                HookPatcher.Inject(typeof(Frame), "FailConstruction", typeof(VerseExtensions));
+                HookPatcher.Inject(typeof(Designator_Cancel), "DesignateThing", typeof(VerseExtensions));
             }
-
-            /*
-            Log.Message("Initializing designator.");
-            // Initialize Designator
-            if (CopyDesignator == null)
-            {
-                CopyDesignator = new Designator_BuildCopy();
-            }
-            ReverseDesignatorDatabase.AllDesignators.Add(CopyDesignator);
-
-            Log.Message("Initializing watchdog.");
-            // Initialize ticker
-            if (Watchdog == null)
-            {
-                Watchdog = new BuildingWatchdog();
-                Watchdog.def = new ThingDef { tickerType = TickerType.Normal };
-            }
-            Find.TickManager.RegisterAllTickabilityFor(Watchdog);
-            */
-
-            Log.Message("BuildProductive initalized.");
-        }
-
-        public static bool Detour(Type srcType, string srcName, BindingFlags srcFlags, Type dstType, string dstName, BindingFlags dstFlags)
-        {
-            var src = srcType.GetMethod(srcName, srcFlags);
-            var dst = dstType.GetMethod(dstName, dstFlags);
-            return Detours.TryDetourFromTo(src, dst);
         }
 
         public static FieldInfo GetInstancePrivateField(Type type, string name)
