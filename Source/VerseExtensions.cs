@@ -51,9 +51,16 @@ namespace BuildProductive
             var des = Globals.CopyDesignator;
             var blueprint = GenConstruct.PlaceBlueprintForBuild(sourceDef, center, rotation, faction, stuff);
 
-            if (des.LastBuilding != null && des.PlacingDef == sourceDef && des.CurrentCell == center)
+            if (des.PlacingDef == sourceDef && des.CurrentCell == center)
             {
-                des.Keeper.RegisterBlueprint(des.LastBuilding, blueprint);
+                if (des.LastBuilding != null)
+                {
+                    des.Keeper.RegisterBlueprint(des.LastBuilding, blueprint);
+                }
+                else
+                {
+                    // TODO When copying a blueprint or frame and it has settings stored, copy those
+                }
             }
 
             return blueprint;
@@ -93,7 +100,6 @@ namespace BuildProductive
             if (blueprint != null)
             {
                 Globals.Keeper.UnregisterBlueprint(blueprint);
-                return;
             }
 
             var frame = t as Frame;

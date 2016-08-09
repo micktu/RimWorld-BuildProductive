@@ -7,9 +7,11 @@ namespace BuildProductive
     [StaticConstructorOnStartup]
     class Bootstrapper
     {
+        public static readonly Logger.Level Verbosity = Logger.Level.Debug;
+
         static Bootstrapper()
         {
-            Globals.Logger = new Logger { MessagePrefix = "BuildProductive: ", Verbosity = Logger.Level.Info };
+            Globals.Logger = new Logger { MessagePrefix = "BuildProductive: ", Verbosity = Verbosity };
 
             Privates.Resolve();
 
@@ -34,7 +36,10 @@ namespace BuildProductive
             injector.Inject(typeof(Blueprint_Build), "MakeSolidThing", typeof(VerseExtensions));
             injector.Inject(typeof(Frame), "CompleteConstruction", typeof(VerseExtensions));
             injector.Inject(typeof(Frame), "FailConstruction", typeof(VerseExtensions));
-            injector.Inject(typeof(Designator_Cancel), "DesignateThing", typeof(VerseExtensions));
+
+            // FIXME Remove canceled buildings from list
+            //injector.Inject(typeof(Designator_Cancel), "DesignateThing", typeof(VerseExtensions));
+            //injector.Inject(typeof(ListerThings), "Remove", typeof(VerseExtensions));
 
             Globals.Logger.Info("Bootstrapped.");
         }

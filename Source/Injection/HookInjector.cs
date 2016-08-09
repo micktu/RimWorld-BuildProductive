@@ -22,7 +22,8 @@ namespace BuildProductive.Injection
             public IntPtr TargetPtr;
         }
 
-        private Logger _logger = new Logger { MessagePrefix = "HookInjector: ", Verbosity = Logger.Level.Info };
+        //private Logger _logger = new Logger { MessagePrefix = "HookInjector: ", Verbosity = Bootstrapper.Verbosity };
+        private Logger _logger = Globals.Logger;
 
         private List<PatchInfo> _patches = new List<PatchInfo>();
 
