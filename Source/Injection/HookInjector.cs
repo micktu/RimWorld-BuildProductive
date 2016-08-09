@@ -4,7 +4,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using Verse;
 
-namespace BuildProductive
+namespace BuildProductive.Injection
 {
     public class HookInjector
     {

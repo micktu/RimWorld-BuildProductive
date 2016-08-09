@@ -29,13 +29,12 @@ namespace BuildProductive
             if (WrapInfo(building, out bi))
             {
                 _blueprints[blueprint.thingIDNumber] = bi;
-                Log.Message("Blueprint " + blueprint.thingIDNumber);
+                Log.Message("Registered blueprint " + blueprint.thingIDNumber + " for building " + building.thingIDNumber);
             }
         }
 
         public void RegisterBlueprint(Frame frame, Blueprint_Build blueprint)
         {
-            Log.Message("Reregister blueprint");
             var id = frame.thingIDNumber;
 
             BuildingInfo bi;
@@ -43,13 +42,16 @@ namespace BuildProductive
             {
                 _blueprints[blueprint.thingIDNumber] = bi;
                 _frames.Remove(id);
+                Log.Message("Transferred from frame " + id + " to blueprint " + blueprint.thingIDNumber);
             }
         }
 
         public void UnregisterBlueprint(Blueprint blueprint)
         {
-            Log.Message("Unregister blueprint");
-            _blueprints.Remove(blueprint.thingIDNumber);
+            if (_blueprints.Remove(blueprint.thingIDNumber))
+            {
+                Log.Message("Unregistered blueprint " + blueprint.thingIDNumber);
+            }
         }
 
         public void RegisterFrame(Blueprint_Build blueprint, Frame frame)
@@ -59,28 +61,40 @@ namespace BuildProductive
             BuildingInfo bi;
             if (_blueprints.TryGetValue(id, out bi))
             {
-                Log.Message("Blueprint " + id + " frame " + frame.thingIDNumber);
                 _frames[frame.thingIDNumber] = bi;
                 _blueprints.Remove(id);
+                Log.Message("Transferred from blueprint " + id + " to frame " + frame.thingIDNumber);
             }
         }
 
         public void UnregisterFrame(Frame frame)
         {
-            Log.Message("Unregister frame");
-            _frames.Remove(frame.thingIDNumber);
+            if (_frames.Remove(frame.thingIDNumber))
+            {
+                Log.Message("Unregistered frame " + frame.thingIDNumber);
+            }
         }
 
-        public void RegisterBuilding(Frame frame, Building building)
+        public void UpdateBuilding(Frame frame, Building building)
         {
             var id = frame.thingIDNumber;
 
             BuildingInfo bi;
             if (_frames.TryGetValue(id, out bi))
             {
-                Log.Message("frame " + id);
                 UnwrapInfo(building, bi);
                 _frames.Remove(id);
+                Log.Message("Transferred from frame " + id + " to building " + building.thingIDNumber);
+            }
+        }
+
+        public void UpdateBuilding(Building source, Building destination)
+        {
+            BuildingInfo bi;
+            if (WrapInfo(source, out bi))
+            {
+                UnwrapInfo(destination, bi);
+                Log.Message("Transferred from building " + source.thingIDNumber + " to building " + destination.thingIDNumber);
             }
         }
 
@@ -93,7 +107,7 @@ namespace BuildProductive
             var flickable = building.GetComp<CompFlickable>();
             if (flickable != null)
             {
-                bi.WantSwitchOn = (bool)Bootstrapper.WantSwitchOn.GetValue(flickable);
+                bi.WantSwitchOn = (bool)Privates.WantSwitchOn.GetValue(flickable);
                 hasSettings = true;
             }
 
@@ -109,7 +123,7 @@ namespace BuildProductive
             var rearmable = building as Building_TrapRearmable;
             if (rearmable != null)
             {
-                bi.AutoRearm = (bool)Bootstrapper.AutoRearmField.GetValue(rearmable);
+                bi.AutoRearm = (bool)Privates.AutoRearmField.GetValue(rearmable);
                 hasSettings = true;
             }
 
@@ -117,7 +131,7 @@ namespace BuildProductive
             var turret = building as Building_TurretGun;
             if (turret != null)
             {
-                bi.HoldFire = (bool)Bootstrapper.HoldFireField.GetValue(turret);
+                bi.HoldFire = (bool)Privates.HoldFireField.GetValue(turret);
                 hasSettings = true;
             }
 
@@ -131,7 +145,7 @@ namespace BuildProductive
             // Check if we need switching it off to avoid unnecessary tutorial prompt
             if (!bi.WantSwitchOn && flickable != null)
             {
-                Bootstrapper.WantSwitchOn.SetValue(flickable, bi.WantSwitchOn);
+                Privates.WantSwitchOn.SetValue(flickable, bi.WantSwitchOn);
                 FlickUtility.UpdateFlickDesignation(building);
             }
 
@@ -146,16 +160,15 @@ namespace BuildProductive
             var rearmable = building as Building_TrapRearmable;
             if (rearmable != null)
             {
-                Bootstrapper.AutoRearmField.SetValue(rearmable, bi.AutoRearm);
+                Privates.AutoRearmField.SetValue(rearmable, bi.AutoRearm);
             }
 
             // Hold fire
             var turret = building as Building_TurretGun;
             if (turret != null)
             {
-                Bootstrapper.HoldFireField.SetValue(turret, bi.HoldFire);
+                Privates.HoldFireField.SetValue(turret, bi.HoldFire);
             }
         }
-
     }
 }

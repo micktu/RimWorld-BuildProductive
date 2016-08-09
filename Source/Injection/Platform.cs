@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 using UnityEngine;
 using Verse;
 
-namespace BuildProductive
+namespace BuildProductive.Injection
 {
     public static class Platform
     {

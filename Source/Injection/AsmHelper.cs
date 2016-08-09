@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace BuildProductive
+namespace BuildProductive.Injection
 {
     public struct AsmHelper
     {

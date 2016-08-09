@@ -26,6 +26,7 @@ namespace BuildProductive
             WriteStuff = true;
 
             Keeper = new BuildingKeeper();
+            Globals.Keeper = Keeper;
         }
 
         // FIXME If IconDrawColor ever becomes public
@@ -46,11 +47,11 @@ namespace BuildProductive
         {
             set
             {
-                Bootstrapper.StuffDefField.SetValue(this, value);
+                Privates.StuffDefField.SetValue(this, value);
             }
             get
             {
-                return Bootstrapper.StuffDefField.GetValue(this) as ThingDef;
+                return Privates.StuffDefField.GetValue(this) as ThingDef;
             }
         }
 
@@ -58,7 +59,7 @@ namespace BuildProductive
         {
             set
             {
-                Bootstrapper.WriteStuffField.SetValue(this, value);
+                Privates.WriteStuffField.SetValue(this, value);
             }
         }
 
@@ -77,12 +78,7 @@ namespace BuildProductive
             if (DebugSettings.godMode || entDef.GetStatValueAbstract(StatDefOf.WorkToMake, StuffDef) == 0f)
             {
                 var building = Find.ThingGrid.ThingAt<Building>(c);
-                BuildingKeeper.BuildingInfo bi;
-
-                if (Keeper.WrapInfo(LastBuilding, out bi))
-                {
-                    Keeper.UnwrapInfo(building, bi);
-                }
+                Keeper.UpdateBuilding(LastBuilding, building);
             }
         }
 

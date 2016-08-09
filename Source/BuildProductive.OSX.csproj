@@ -58,11 +58,17 @@
     <Compile Include="Designator_BuildCopy.cs" />
     <Compile Include="Bootstrapper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="BuildingWatchdog.cs" />
     <Compile Include="VerseExtensions.cs" />
-    <Compile Include="HookInjector.cs" />
-    <Compile Include="Platform.cs" />
-    <Compile Include="AsmHelper.cs" />
+    <Compile Include="BuildingKeeper.cs" />
+    <Compile Include="InitScript.cs" />
+    <Compile Include="Injection\AsmHelper.cs" />
+    <Compile Include="Injection\HookInjector.cs" />
+    <Compile Include="Injection\Platform.cs" />
+    <Compile Include="Privates.cs" />
+    <Compile Include="Globals.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Injection\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
