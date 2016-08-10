@@ -35,7 +35,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <CustomCommands>
       <CustomCommands>
-        <Command type="AfterBuild" command="../deploy.sh" workingdir="" />
+        <Command type="AfterBuild" command="../deploy.sh" workingdir="${ProjectDir}/../" />
       </CustomCommands>
     </CustomCommands>
   </PropertyGroup>

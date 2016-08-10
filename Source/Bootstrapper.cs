@@ -1,4 +1,5 @@
-﻿using Verse;
+﻿using System;
+using Verse;
 using RimWorld;
 using BuildProductive.Injection;
 
@@ -29,7 +30,7 @@ namespace BuildProductive
 
             // Command-related hooks
             injector.Inject(typeof(Command), "get_IconDrawColor", typeof(VerseExtensions));
-            injector.Inject(typeof(GizmoGridDrawer), "DrawGizmoGrid", typeof(VerseExtensions));
+            //injector.Inject(typeof(GizmoGridDrawer), "DrawGizmoGrid", typeof(VerseExtensions));
 
             // Designator-related hooks
             injector.Inject(typeof(GenConstruct), "PlaceBlueprintForBuild", typeof(VerseExtensions));
@@ -37,9 +38,11 @@ namespace BuildProductive
             injector.Inject(typeof(Frame), "CompleteConstruction", typeof(VerseExtensions));
             injector.Inject(typeof(Frame), "FailConstruction", typeof(VerseExtensions));
 
-            // FIXME Remove canceled buildings from list
+            var genLeaving = typeof(GenLeaving);
+            var doLeavingsFor = genLeaving.GetMethod("DoLeavingsFor", new Type[] { typeof(Thing), typeof(DestroyMode) });
+            //injector.Inject(genLeaving, doLeavingsFor, typeof(VerseExtensions));
+
             //injector.Inject(typeof(Designator_Cancel), "DesignateThing", typeof(VerseExtensions));
-            //injector.Inject(typeof(ListerThings), "Remove", typeof(VerseExtensions));
 
             Globals.Logger.Info("Bootstrapped.");
         }

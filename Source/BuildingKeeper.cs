@@ -23,34 +23,43 @@ namespace BuildProductive
             _frames = new Dictionary<int, BuildingInfo>();
         }
 
-        public void RegisterBlueprint(Building building, Blueprint_Build blueprint)
+        public bool RegisterBlueprint(Thing thing, Blueprint_Build blueprint, bool isCopy = false)
         {
-            BuildingInfo bi;
-            if (WrapInfo(building, out bi))
+            BuildingInfo bi = new BuildingInfo();
+            var id = thing.thingIDNumber;
+            var isFound = false;
+
+            if (thing is Frame && _frames.TryGetValue(id, out bi))
+            {
+                isFound = true;
+                if (!isCopy) _frames.Remove(id);
+            }
+            else if (thing is Building && WrapInfo(thing as Building, out bi))
+            {
+                isCopy = true;
+                isFound = true;
+            }
+            else if (thing is Blueprint_Build && _blueprints.TryGetValue(id, out bi))
+            {
+                isFound = true;
+                if (!isCopy) _blueprints.Remove(id);
+            }
+
+            if (isFound)
             {
                 _blueprints[blueprint.thingIDNumber] = bi;
-                Globals.Logger.Debug("Registered blueprint " + blueprint.thingIDNumber + " for building " + building.thingIDNumber);
+                LogTransfer(thing, blueprint, isCopy);
+                return true;
             }
+
+            return false;
         }
 
-        public void RegisterBlueprint(Frame frame, Blueprint_Build blueprint)
-        {
-            var id = frame.thingIDNumber;
-
-            BuildingInfo bi;
-            if (_frames.TryGetValue(id, out bi))
-            {
-                _blueprints[blueprint.thingIDNumber] = bi;
-                _frames.Remove(id);
-                Globals.Logger.Debug("Transferred from frame " + id + " to blueprint " + blueprint.thingIDNumber);
-            }
-        }
-
-        public void UnregisterBlueprint(Blueprint blueprint)
+        public void UnregisterBlueprint(Blueprint_Build blueprint)
         {
             if (_blueprints.Remove(blueprint.thingIDNumber))
             {
-                Globals.Logger.Debug("Unregistered blueprint " + blueprint.thingIDNumber);
+                LogUnregister(blueprint);
             }
         }
 
@@ -63,7 +72,7 @@ namespace BuildProductive
             {
                 _frames[frame.thingIDNumber] = bi;
                 _blueprints.Remove(id);
-                Globals.Logger.Debug("Transferred from blueprint " + id + " to frame " + frame.thingIDNumber);
+                LogTransfer(blueprint, frame);
             }
         }
 
@@ -71,11 +80,11 @@ namespace BuildProductive
         {
             if (_frames.Remove(frame.thingIDNumber))
             {
-                Globals.Logger.Debug("Unregistered frame " + frame.thingIDNumber);
+                LogUnregister(frame);
             }
         }
 
-        public void UpdateBuilding(Frame frame, Building building)
+        public void RegisterBuilding(Frame frame, Building building)
         {
             var id = frame.thingIDNumber;
 
@@ -84,17 +93,17 @@ namespace BuildProductive
             {
                 UnwrapInfo(building, bi);
                 _frames.Remove(id);
-                Globals.Logger.Debug("Transferred from frame " + id + " to building " + building.thingIDNumber);
+                LogTransfer(frame, building);
             }
         }
 
-        public void UpdateBuilding(Building source, Building destination)
+        public void RegisterBuilding(Building source, Building destination)
         {
             BuildingInfo bi;
             if (WrapInfo(source, out bi))
             {
                 UnwrapInfo(destination, bi);
-                Globals.Logger.Debug("Transferred from building " + source.thingIDNumber + " to building " + destination.thingIDNumber);
+                LogTransfer(source, destination, true);
             }
         }
 
@@ -169,6 +178,21 @@ namespace BuildProductive
             {
                 Privates.HoldFireField.SetValue(turret, bi.HoldFire);
             }
+        }
+
+        private void LogTransfer(Thing source, Thing destination, bool isCopy = false)
+        {
+            Globals.Logger.Debug("{0} from {1} to {2}", isCopy ? "Copied" : "Transferred", source.ThingID, destination.ThingID);
+        }
+
+        private void LogRegister(Thing thing)
+        {
+            Globals.Logger.Debug("Registered {0}", thing.ThingID);
+        }
+
+        private void LogUnregister(Thing thing)
+        {
+            Globals.Logger.Debug("Unregistered {0}", thing.ThingID);
         }
     }
 }

@@ -48,33 +48,50 @@ namespace BuildProductive.Injection
 
         public void Inject(Type sourceType, string sourceName, Type targetType, string targetName = "")
         {
-            if (targetName.Length < 1)
-            {
-                targetName = sourceType.Name + "_" + sourceName;
-            }
+            MethodInfo sourceMethod;
 
-            var pi = new PatchInfo();
-
-            pi.SourceType = sourceType;
-            pi.TargetType = targetType;
-
-            pi.SourceMethod = sourceType.GetMethod(sourceName);
-            if (pi.SourceMethod == null) pi.SourceMethod = sourceType.GetMethod(sourceName, BindingFlags.Static | BindingFlags.NonPublic);
-            if (pi.SourceMethod == null) pi.SourceMethod = sourceType.GetMethod(sourceName, BindingFlags.Instance | BindingFlags.NonPublic);
-            if (pi.SourceMethod == null)
+            sourceMethod = sourceType.GetMethod(sourceName);
+            if (sourceMethod == null) sourceMethod = sourceType.GetMethod(sourceName, BindingFlags.Static | BindingFlags.NonPublic);
+            if (sourceMethod == null) sourceMethod = sourceType.GetMethod(sourceName, BindingFlags.Instance | BindingFlags.NonPublic);
+            if (sourceMethod == null)
             {
                 _logger.Error("Source method {0}.{1} not found", sourceType.Name, sourceName);
                 return;
             }
 
-            pi.TargetMethod = targetType.GetMethod(targetName);
-            if (pi.TargetMethod == null) pi.TargetMethod = targetType.GetMethod(targetName, BindingFlags.Static | BindingFlags.NonPublic);
-            if (pi.TargetMethod == null) pi.TargetMethod = targetType.GetMethod(targetName, BindingFlags.Instance | BindingFlags.NonPublic);
-            if (pi.TargetMethod == null)
+            Inject(sourceType, sourceMethod, targetType, targetName);
+        }
+
+        public void Inject(Type sourceType, MethodInfo sourceMethod, Type targetType, string targetName = "")
+        {
+            if (targetName.Length < 1)
+            {
+                targetName = sourceType.Name + "_" + sourceMethod.Name;
+            }
+
+            MethodInfo targetMethod;
+
+            targetMethod = targetType.GetMethod(targetName);
+            if (targetMethod == null) targetMethod = targetType.GetMethod(targetName, BindingFlags.Static | BindingFlags.NonPublic);
+            if (targetMethod == null) targetMethod = targetType.GetMethod(targetName, BindingFlags.Instance | BindingFlags.NonPublic);
+            if (targetMethod == null)
             {
                 _logger.Error("Target method {0}.{1} not found", targetType.Name, targetName);
                 return;
             }
+
+            Inject(sourceType, sourceMethod, targetType, targetMethod);
+        }
+
+        public void Inject(Type sourceType, MethodInfo sourceMethod, Type targetType, MethodInfo targetMethod)
+        {
+            var pi = new PatchInfo();
+
+            pi.SourceType = sourceType;
+            pi.TargetType = targetType;
+
+            pi.SourceMethod = sourceMethod;
+            pi.TargetMethod = targetMethod;
 
             pi.SourcePtr = pi.SourceMethod.MethodHandle.GetFunctionPointer();
             pi.TargetPtr = pi.TargetMethod.MethodHandle.GetFunctionPointer();

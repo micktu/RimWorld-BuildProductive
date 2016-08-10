@@ -8,7 +8,7 @@ namespace BuildProductive
     {
         public static readonly ThingDef PlaceholderDef = DefDatabase<ThingDef>.GetNamed("Wall");
 
-        public Building LastBuilding { get; private set; }
+        public Thing LastThing { get; private set; }
 
         public IntVec3 CurrentCell { get; private set; }
 
@@ -77,8 +77,8 @@ namespace BuildProductive
             
             if (DebugSettings.godMode || entDef.GetStatValueAbstract(StatDefOf.WorkToMake, StuffDef) == 0f)
             {
-                var building = Find.ThingGrid.ThingAt<Building>(c);
-                Keeper.UpdateBuilding(LastBuilding, building);
+                var building = Find.ThingGrid.ThingAt(c, LastThing.def) as Building;
+                Keeper.RegisterBuilding(LastThing as Building, building);
             }
         }
 
@@ -86,26 +86,22 @@ namespace BuildProductive
         {
             var thing = Find.Selector.SingleSelectedThing;
 
-            var blueprint = thing as Blueprint_Build;
-            var frame = thing as Frame;
-            var building = thing as Building;
-
-            if (frame != null)
+            if (thing is Frame)
             {
-                entDef = frame.def.entityDefToBuild;
-                StuffDef = frame.Stuff;
+                entDef = thing.def.entityDefToBuild;
+                StuffDef = thing.Stuff;
             }
-            else if (building != null)
+            else if (thing is Building)
             {
-                if (building.def.frameDef == null) return false;
+                if (thing.def.frameDef == null) return false;
 
-                entDef = building.def;
-                StuffDef = building.Stuff;
+                entDef = thing.def;
+                StuffDef = thing.Stuff;
             }
-            else if (blueprint != null)
+            else if (thing is Blueprint)
             {
-                entDef = blueprint.def.entityDefToBuild;
-                StuffDef = blueprint.stuffToUse;
+                entDef = thing.def.entityDefToBuild;
+                StuffDef = (thing as Blueprint_Build).stuffToUse;
             }
             else return false;
 
@@ -137,9 +133,7 @@ namespace BuildProductive
         {
             DesignatorManager.Select(this);
             placingRot = _buildingRot;
-
-            LastBuilding = t as Building;
-            if (LastBuilding is Frame) LastBuilding = null;
+            LastThing = t;
         }
     }
 }

@@ -24,7 +24,7 @@ namespace BuildProductive
             Globals.CopyDesignator = des;
             ReverseDesignatorDatabase.AllDesignators.Add(des);
 
-            Globals.Logger.Info("Post-load initialized.");
+            Globals.Logger.Info("Initialized post-load.");
 
             Destroy(gameObject);
         }

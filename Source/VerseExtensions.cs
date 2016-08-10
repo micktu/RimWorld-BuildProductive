@@ -53,14 +53,7 @@ namespace BuildProductive
 
             if (des.PlacingDef == sourceDef && des.CurrentCell == center)
             {
-                if (des.LastBuilding != null)
-                {
-                    des.Keeper.RegisterBlueprint(des.LastBuilding, blueprint);
-                }
-                else
-                {
-                    // TODO When copying a blueprint or frame and it has settings stored, copy those
-                }
+                des.Keeper.RegisterBlueprint(des.LastThing, blueprint, true);
             }
 
             return blueprint;
@@ -70,7 +63,9 @@ namespace BuildProductive
         {
             // FIXME should Invoke MakeSolidThing() when the injector will be able to take care of that
             var thing = ThingMaker.MakeThing(blueprint.def.entityDefToBuild.frameDef, blueprint.stuffToUse);
+
             Globals.Keeper.RegisterFrame(blueprint, thing as Frame);
+
             return thing;
         }
 
@@ -79,8 +74,8 @@ namespace BuildProductive
             var pos = frame.Position;
             frame.CompleteConstruction(worker);
 
-            var building = Find.ThingGrid.ThingAt<Building>(pos);
-            Globals.Keeper.UpdateBuilding(frame, building);
+            var building = Find.ThingGrid.ThingAt(pos, frame.def.entityDefToBuild as ThingDef) as Building;
+            Globals.Keeper.RegisterBuilding(frame, building);
         }
 
         internal static void Frame_FailConstruction(this Frame frame, Pawn worker)
@@ -92,21 +87,29 @@ namespace BuildProductive
             Globals.Keeper.RegisterBlueprint(frame, blueprint);
         }
 
-        internal static void Designator_Cancel_DesignateThing(this Designator_Cancel des, Thing t)
+        /*
+        internal static void Designator_Cancel_DesignateThing(this Designator_Cancel designator, Thing t)
         {
-            des.DesignateThing(t);
-
-            var blueprint = t as Blueprint;
-            if (blueprint != null)
-            {
-                Globals.Keeper.UnregisterBlueprint(blueprint);
-            }
-
-            var frame = t as Frame;
-            if (frame != null)
-            {
-                Globals.Keeper.UnregisterFrame(frame);
-            }
+            designator.DesignateThing(t);
         }
+        */
+        /*
+        internal static void GenLeaving_DoLeavingsFor(Thing diedThing, DestroyMode mode)
+        {
+            if (mode == DestroyMode.Cancel)
+            {
+                if (diedThing is Blueprint_Build)
+                {
+                    Globals.Keeper.UnregisterBlueprint(diedThing as Blueprint_Build);
+                }
+                else if (diedThing is Frame)
+                {
+                    Globals.Keeper.UnregisterFrame(diedThing as Frame);
+                }
+            }
+
+            GenLeaving.DoLeavingsFor(diedThing, mode);
+        }
+        */
     }
 }
