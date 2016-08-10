@@ -49,15 +49,17 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AsmHelper.cs" />
     <Compile Include="BuildingKeeper.cs" />
     <Compile Include="Designator_BuildCopy.cs" />
     <Compile Include="Bootstrapper.cs" />
-    <Compile Include="HookInjector.cs" />
-    <Compile Include="Platform.cs" />
+    <Compile Include="Globals.cs" />
     <Compile Include="InitScript.cs" />
+    <Compile Include="Injection\AsmHelper.cs" />
+    <Compile Include="Injection\HookInjector.cs" />
+    <Compile Include="Injection\Platform.cs" />
+    <Compile Include="Logger.cs" />
+    <Compile Include="Privates.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="BuildingWatchdog.cs" />
     <Compile Include="VerseExtensions.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -77,8 +77,8 @@ namespace BuildProductive
             
             if (DebugSettings.godMode || entDef.GetStatValueAbstract(StatDefOf.WorkToMake, StuffDef) == 0f)
             {
-                var building = Find.ThingGrid.ThingAt(c, LastThing.def) as Building;
-                Keeper.RegisterBuilding(LastThing as Building, building);
+                var building = Find.ThingGrid.ThingAt(c, entDef as ThingDef) as Building;
+                Keeper.RegisterBuilding(LastThing, building, true);
             }
         }
 

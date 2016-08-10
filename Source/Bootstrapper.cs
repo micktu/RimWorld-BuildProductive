@@ -8,7 +8,7 @@ namespace BuildProductive
     [StaticConstructorOnStartup]
     class Bootstrapper
     {
-        public static readonly Logger.Level Verbosity = Logger.Level.Debug;
+        public static readonly Logger.Level Verbosity = Logger.Level.Info;
 
         static Bootstrapper()
         {

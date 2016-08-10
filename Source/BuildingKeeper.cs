@@ -84,27 +84,36 @@ namespace BuildProductive
             }
         }
 
-        public void RegisterBuilding(Frame frame, Building building)
+        public bool RegisterBuilding(Thing thing, Building building, bool isCopy = false)
         {
-            var id = frame.thingIDNumber;
+            BuildingInfo bi = new BuildingInfo();
+            var id = thing.thingIDNumber;
+            var isFound = false;
 
-            BuildingInfo bi;
-            if (_frames.TryGetValue(id, out bi))
+            if (thing is Frame && _frames.TryGetValue(id, out bi))
+            {
+                isFound = true;
+                if (!isCopy) _frames.Remove(id);
+            }
+            else if (thing is Building && WrapInfo(thing as Building, out bi))
+            {
+                isFound = true;
+                isCopy = true;
+            }
+            else if (thing is Blueprint_Build && _blueprints.TryGetValue(id, out bi))
+            {
+                isFound = true;
+                if (!isCopy) _blueprints.Remove(id);
+            }
+
+            if (isFound)
             {
                 UnwrapInfo(building, bi);
-                _frames.Remove(id);
-                LogTransfer(frame, building);
+                LogTransfer(thing, building, isCopy);
+                return true;
             }
-        }
 
-        public void RegisterBuilding(Building source, Building destination)
-        {
-            BuildingInfo bi;
-            if (WrapInfo(source, out bi))
-            {
-                UnwrapInfo(destination, bi);
-                LogTransfer(source, destination, true);
-            }
+            return false;
         }
 
         public bool WrapInfo(Building building, out BuildingInfo bi)
